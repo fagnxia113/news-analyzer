@@ -27,7 +27,15 @@
       "Bash(git remote add origin https://github.com/YOUR_USERNAME/news-analyzer.git)",
       "Bash(git push -u origin main)",
       "Bash(git remote set-url origin https://github.com/fagnxia113/news-analyzer.git)",
-      "Bash(git commit -m \"Update formatting and line endings\")"
+      "Bash(git commit -m \"Update formatting and line endings\")",
+      "Bash(ping github.com -n 2)",
+      "Bash(git push --force origin main)",
+      "Bash(git add .github/workflows/windows-build.yml)",
+      "Bash(git commit -m \"Fix GitHub Actions paths after directory restructure\")",
+      "Bash(git push origin main)",
+      "Bash(git add .github/workflows/windows-build.yml news-analyzer/src-tauri/Cargo.toml news-analyzer/src-tauri/tauri.conf.json)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix Tauri build issues and improve CI configuration\n\n- Remove watcher plugin configuration to resolve dependency issues\n- Add proper license and description to Cargo.toml\n- Add Rust build target for Windows (x86_64-pc-windows-msvc)\n- Add Rust caching for faster builds\n- Enable verbose logging for debugging\nEOF\n)\")",
+      "Bash(git commit -m \"Update Claude settings\")"
     ],
     "deny": [],
     "ask": []
