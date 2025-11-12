@@ -35,29 +35,6 @@
   "plugins": {
     "shell": {
       "open": true
-    },
-    "watcher": {
-      "ignore": [
-        "**/data/**",
-        "**/target/**",
-        "**/*.db",
-        "**/*.db-*",
-        "**/news_analyzer.db",
-        "**/news_analyzer.db-*",
-        "src-tauri/data/**",
-        "src-tauri/data/*",
-        "src-tauri/data/news_analyzer.db",
-        "src-tauri/data/news_analyzer.db-*",
-        "data/**",
-        "data/*",
-        "data/news_analyzer.db",
-        "data/news_analyzer.db-*",
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/*.log",
-        "**/*.sqlite",
-        "**/*.sqlite3"
-      ]
     }
   }
 }

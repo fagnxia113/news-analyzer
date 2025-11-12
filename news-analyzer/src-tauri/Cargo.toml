@@ -2,6 +2,8 @@
 name = "news-analyzer-mvp"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "News Analyzer with RSS and WeChat Read integration"
 
 [build-dependencies]
 tauri-build = { version = "2.0", features = [], default-features = false }
