@@ -25,7 +25,9 @@
       "Bash(git config user.email \"claude@anthropic.com\")",
       "Bash(gh repo create news-analyzer --public --description \"新闻分析器 - RSS和微信阅读内容分析工具\" --clone=false)",
       "Bash(git remote add origin https://github.com/YOUR_USERNAME/news-analyzer.git)",
-      "Bash(git push -u origin main)"
+      "Bash(git push -u origin main)",
+      "Bash(git remote set-url origin https://github.com/fagnxia113/news-analyzer.git)",
+      "Bash(git commit -m \"Update formatting and line endings\")"
     ],
     "deny": [],
     "ask": []
