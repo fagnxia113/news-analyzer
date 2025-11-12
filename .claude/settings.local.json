@@ -18,7 +18,14 @@
       "Bash(mv news/news-analyzer-mvp news-analyzer)",
       "Bash(rmdir news)",
       "Bash(mv news/.gitignore news-analyzer/)",
-      "Bash(mkdir projects)"
+      "Bash(mkdir projects)",
+      "Bash(git add .)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: News Analyzer with Tauri backend and Vue frontend\n\nFeatures:\n- RSS and WeChat Read feed management\n- Real-time analysis with LLM integration\n- Advanced filtering and selection capabilities\n- Database migration to installation directory\n- Optimized subscription refreshing with interruption support\n- Comprehensive real-time logging system\n- System information and settings management\n\nTechnical stack:\n- Backend: Rust with Tauri framework\n- Frontend: Vue 3 with TypeScript\n- Database: SQLite with automatic migration\n- UI: Responsive design with real-time updates\nEOF\n)\")",
+      "Bash(git config user.name \"Claude Code\")",
+      "Bash(git config user.email \"claude@anthropic.com\")",
+      "Bash(gh repo create news-analyzer --public --description \"新闻分析器 - RSS和微信阅读内容分析工具\" --clone=false)",
+      "Bash(git remote add origin https://github.com/YOUR_USERNAME/news-analyzer.git)",
+      "Bash(git push -u origin main)"
     ],
     "deny": [],
     "ask": []
