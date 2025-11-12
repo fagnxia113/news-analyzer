@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone https://github.com/fagnxia113/news.git)",
+      "Bash(git pull)",
+      "Bash(rm -rf news)",
+      "Bash(git clone https://github.com/fagnxia113/news.git --depth 1)",
+      "Bash(timeout 10)",
+      "Bash(dir)",
+      "Bash(dir news)",
+      "Bash(dir Qbot)",
+      "Bash(dir /b)",
+      "Bash(tree . -d -L 3)",
+      "Bash(rm -rf news/news-analyzer-mvp/node_modules)",
+      "Bash(rm -rf news/news-analyzer-mvp/green_portable)",
+      "Bash(rm -f news/news-analyzer-mvp/news-analyzer-mvp_0.1.0_portable.tar.gz)",
+      "Bash(rm -rf news/news-analyzer-mvp/dist)",
+      "Bash(mv news/news-analyzer-mvp news-analyzer)",
+      "Bash(rmdir news)",
+      "Bash(mv news/.gitignore news-analyzer/)",
+      "Bash(mkdir projects)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "productName": "news-analyzer-mvp",
+  "version": "0.1.0",
+  "identifier": "com.news-analyzer.mvp",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "新闻分析器 MVP",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": ["main"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "watcher": {
+      "ignore": [
+        "**/data/**",
+        "**/target/**",
+        "**/*.db",
+        "**/*.db-*",
+        "**/news_analyzer.db",
+        "**/news_analyzer.db-*",
+        "src-tauri/data/**",
+        "src-tauri/data/*",
+        "src-tauri/data/news_analyzer.db",
+        "src-tauri/data/news_analyzer.db-*",
+        "data/**",
+        "data/*",
+        "data/news_analyzer.db",
+        "data/news_analyzer.db-*",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/*.log",
+        "**/*.sqlite",
+        "**/*.sqlite3"
+      ]
+    }
+  }
+}

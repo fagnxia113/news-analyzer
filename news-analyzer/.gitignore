@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+*/dist/
+target/
+*/target/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Lock files
+package-lock.json
+*/package-lock.json
+Cargo.lock
+*/Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+.tmp/
+temp/
+
+# Qoder
+.qoder/
+
+# Environment files
+.env
+.env.local
+.env.*.local

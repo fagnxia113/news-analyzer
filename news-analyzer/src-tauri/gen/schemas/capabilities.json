@@ -1,0 +1,1 @@
+{"main":{"identifier":"main","description":"Main application capabilities","local":true,"windows":["main"],"permissions":["shell:allow-open","shell:default","core:webview:default","core:window:default","core:event:default","dialog:allow-save","fs:allow-write-text-file"]}}
