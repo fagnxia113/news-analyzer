@@ -3,9 +3,6 @@ name: Build Windows App
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'news-analyzer/**'
-      - '.github/workflows/**'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -30,26 +27,19 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
-      - name: Install Tauri prerequisites
-        run: |
-          cargo install tauri-cli@2.0.0 --locked
-
-      - name: Install webview2
-        run: |
-          if ([System.Environment]::OSVersion.Platform -eq "Win32NT") {
-            Write-Host "WebView2 runtime is already installed on GitHub Actions runners"
-          }
-
-      - name: Install dependencies
-        run: npm install
-
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: ./news-analyzer/src-tauri
 
+      - name: Install dependencies
+        run: npm install
+
       - name: Build Tauri app
-        run: cargo tauri build -- --verbose
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        run: npm run tauri build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
