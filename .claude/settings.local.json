@@ -4,7 +4,8 @@
       "Bash(git add .)",
       "Bash(git commit -m \"Simplify GitHub Actions workflow and fix build issues\n\n- Remove path filtering to trigger builds on all pushes\n- Simplify build process using npm script instead of cargo\n- Add authors field to Cargo.toml for better package metadata\n- Remove unnecessary Tauri prerequisites installation\n- Build should work with standard GitHub Actions environment\n\")",
       "Bash(git push origin main)",
-      "Bash(git commit -am \"Update Claude settings\")"
+      "Bash(git commit -am \"Update Claude settings\")",
+      "Bash(git commit -m \"Simplify GitHub Actions workflow to debug build\n\n- Remove code signing requirements\n- Use debug build for faster compilation\n- Split build into frontend and backend steps\n- Install cargo-tauri directly with specific version\n- Focus on generating executable rather than full installer bundle\n\")"
     ],
     "deny": [],
     "ask": []

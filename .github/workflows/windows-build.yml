@@ -24,26 +24,21 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: ./news-analyzer/src-tauri
 
       - name: Install dependencies
         run: npm install
 
+      - name: Build frontend
+        run: npm run build
+
+      - name: Install cargo-tauri
+        run: cargo install tauri-cli --version ^2.0
+
       - name: Build Tauri app
-        env:
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        run: npm run tauri build
+        run: cargo tauri build --debug
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-bundles
-          path: |
-            news-analyzer/src-tauri/target/release/bundle/**
+          name: windows-executable
+          path: news-analyzer/src-tauri/target/debug/news-analyzer-mvp.exe
