@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(git add .)",
-      "Bash(git commit -m \"Simplify GitHub Actions workflow and fix build issues\n\n- Remove path filtering to trigger builds on all pushes\n- Simplify build process using npm script instead of cargo\n- Add authors field to Cargo.toml for better package metadata\n- Remove unnecessary Tauri prerequisites installation\n- Build should work with standard GitHub Actions environment\n\")"
+      "Bash(git commit -m \"Simplify GitHub Actions workflow and fix build issues\n\n- Remove path filtering to trigger builds on all pushes\n- Simplify build process using npm script instead of cargo\n- Add authors field to Cargo.toml for better package metadata\n- Remove unnecessary Tauri prerequisites installation\n- Build should work with standard GitHub Actions environment\n\")",
+      "Bash(git push origin main)",
+      "Bash(git commit -am \"Update Claude settings\")"
     ],
     "deny": [],
     "ask": []
