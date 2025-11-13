@@ -30,6 +30,11 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: Install webview2
+        run: |
+          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "MicrosoftWebview2Setup.exe"
+          Start-Process -Wait "MicrosoftWebview2Setup.exe" -ArgumentList "/silent","/install"
+
       - name: Install dependencies
         run: npm install
 
