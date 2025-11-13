@@ -1,7 +1,7 @@
 use crate::database::Database;
 use crate::weread::{WeReadClient, AccountManager};
-use std::sync::Arc;
-use tokio::sync::{Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use tokio::sync::Mutex;
 
 pub struct AppState {
     pub db: Arc<Database>,

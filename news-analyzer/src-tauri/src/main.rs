@@ -67,11 +67,13 @@ fn main() {
     } else if old_db_path.exists() {
         // 旧位置有数据库，需要迁移
         log::info!("发现旧数据库文件，正在迁移到新位置...");
-        match std::fs::copy(&old_db_path, &new_db_path) {
+        let migration_result = std::fs::copy(&old_db_path, &new_db_path);
+        match migration_result {
             Ok(_) => {
                 log::info!("数据库迁移成功: {} -> {}", old_db_path.display(), new_db_path.display());
                 // 迁移成功后可以选择删除旧数据库文件（这里保留作为备份）
                 log::info!("旧数据库文件已保留作为备份: {}", old_db_path.display());
+                new_db_path.to_string_lossy().to_string()
             }
             Err(e) => {
                 log::error!("数据库迁移失败: {}", e);
@@ -80,7 +82,6 @@ fn main() {
                 old_db_path.to_string_lossy().to_string()
             }
         }
-        new_db_path.to_string_lossy().to_string()
     } else {
         // 都不存在，使用新位置
         new_db_path.to_string_lossy().to_string()

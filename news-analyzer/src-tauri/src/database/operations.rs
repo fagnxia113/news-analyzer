@@ -3,7 +3,6 @@ use super::models::*;
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use anyhow::Result;
-use feed_rs::parser;
 
 impl Database {
     // ========== 账号操作 ==========

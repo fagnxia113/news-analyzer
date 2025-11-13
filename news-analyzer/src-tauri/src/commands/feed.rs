@@ -1,9 +1,10 @@
-use crate::database::models::{WeChatFeed, RSSFeed, RSSArticle};
+use crate::database::models::{WeChatFeed, RSSFeed};
 use crate::state::AppState;
 use crate::rss::RSSParser;
 use tauri::{State, AppHandle, Emitter};
 use chrono::Utc;
 use serde::Serialize;
+use std::sync::atomic::Ordering;
 
 #[derive(Serialize, Clone)]
 pub struct RefreshProgressEvent {
