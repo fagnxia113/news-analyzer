@@ -419,14 +419,17 @@ const canExport = computed(() => {
     return !['scope', 'format', 'groupBy'].includes(key) && value === true
   })
 
+  // 实时进度更新
+let progressUpdateInterval: NodeJS.Timeout | null = null
+
   return hasSelectedItems && hasSelectedFields
 })
 
-// 实时进度更新
-let progressUpdateInterval: NodeJS.Timeout | null = null
-
+// 增强进度更新函数，添加日志记录
 const startProgressUpdate = () => {
-  stopProgressUpdate() // 先停止之前的定时器
+  stopProgressUpdate()
+  addLog('info', '开始监控分析任务进度')
+
   progressUpdateInterval = setInterval(async () => {
     if (currentTask.value && currentTask.value.status === 'running') {
       try {
@@ -956,56 +959,6 @@ const formatLogTime = (timestamp: string) => {
     second: '2-digit',
     fractionalSecondDigits: 3
   })
-}
-
-// 增强进度更新函数，添加日志记录
-const startProgressUpdate = () => {
-  stopProgressUpdate()
-  addLog('info', '开始监控分析任务进度')
-
-  progressUpdateInterval = setInterval(async () => {
-    if (currentTask.value && currentTask.value.status === 'running') {
-      try {
-        const task = await invoke<AnalysisTask>('get_analysis_task', { taskId: currentTask.value.id })
-
-        // 检查是否有进度变化
-        const progressChanged = task.processed_articles !== currentTask.value.processed_articles ||
-                               task.success_count !== currentTask.value.success_count ||
-                               task.failed_count !== currentTask.value.failed_count
-
-        currentTask.value = task
-
-        if (progressChanged) {
-          addLog('info', `任务进度更新: ${task.processed_articles}/${task.total_articles} 篇文章`, {
-            progress: task.processed_articles,
-            total: task.total_articles,
-            current_step: '处理中'
-          })
-
-          if (task.success_count > currentTask.value?.success_count || task.failed_count > currentTask.value?.failed_count) {
-            addLog('info', `成功: ${task.success_count}, 失败: ${task.failed_count}`)
-          }
-        }
-
-        // 如果任务完成，停止更新并加载结果
-        if (task.status === 'completed' || task.status === 'failed') {
-          stopProgressUpdate()
-          if (task.status === 'completed') {
-            addLog('info', '✅ 分析任务完成')
-          } else {
-            addLog('error', task.error_message || '❌ 分析任务失败')
-          }
-          await loadResults()
-        }
-      } catch (error) {
-        addLog('error', `更新任务状态失败: ${error}`)
-        console.error('更新任务状态失败:', error)
-        if ((error as string).toString().includes('分析任务不存在')) {
-          stopProgressUpdate()
-        }
-      }
-    }
-  }, 3000) // 每3秒更新一次
 }
 </script>
 
