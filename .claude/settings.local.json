@@ -35,7 +35,9 @@
       "Bash(git push origin main)",
       "Bash(git add .github/workflows/windows-build.yml news-analyzer/src-tauri/Cargo.toml news-analyzer/src-tauri/tauri.conf.json)",
       "Bash(git commit -m \"$(cat <<''EOF''\nFix Tauri build issues and improve CI configuration\n\n- Remove watcher plugin configuration to resolve dependency issues\n- Add proper license and description to Cargo.toml\n- Add Rust build target for Windows (x86_64-pc-windows-msvc)\n- Add Rust caching for faster builds\n- Enable verbose logging for debugging\nEOF\n)\")",
-      "Bash(git commit -m \"Update Claude settings\")"
+      "Bash(git commit -m \"Update Claude settings\")",
+      "Bash(ping github.com -n 1)",
+      "Bash(git push origin main --force-with-lease)"
     ],
     "deny": [],
     "ask": []
