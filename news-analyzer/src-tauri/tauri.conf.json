@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "新闻分析器 MVP",
+        "title": "新闻分析器",
         "width": 800,
         "height": 600
       }
@@ -23,7 +23,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis"],
+    "targets": [],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

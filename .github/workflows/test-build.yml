@@ -1,0 +1,37 @@
+name: Test Build Steps
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-rust:
+    runs-on: windows-latest
+    steps:
+      - name: Test Rust
+        run: |
+          rustc --version
+          cargo --version
+
+  test-node:
+    runs-on: windows-latest
+    steps:
+      - name: Test Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Check Node version
+        run: |
+          node --version
+          npm --version
+
+  test-cargo-tauri:
+    runs-on: windows-latest
+    steps:
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test cargo install tauri-cli
+        run: |
+          cargo install tauri-cli --version ^2.0
+          cargo tauri --version
