@@ -30,10 +30,15 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      - name: Install Tauri prerequisites
+        run: |
+          cargo install tauri-cli@2.0.0 --locked
+
       - name: Install webview2
         run: |
-          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "MicrosoftWebview2Setup.exe"
-          Start-Process -Wait "MicrosoftWebview2Setup.exe" -ArgumentList "/silent","/install"
+          if ([System.Environment]::OSVersion.Platform -eq "Win32NT") {
+            Write-Host "WebView2 runtime is already installed on GitHub Actions runners"
+          }
 
       - name: Install dependencies
         run: npm install
@@ -44,7 +49,7 @@ jobs:
           workspaces: ./news-analyzer/src-tauri
 
       - name: Build Tauri app
-        run: npm run tauri:build -- --verbose
+        run: cargo tauri build -- --verbose
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
