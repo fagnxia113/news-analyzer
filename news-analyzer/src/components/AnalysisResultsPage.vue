@@ -360,8 +360,11 @@ const exportOptions = ref({
 // 实时日志相关状态
 const showLogsPanel = ref(false)
 const analysisLogs = ref<AnalysisLog[]>([])
-const logFilter = ref<'all' | 'info' | 'warn' | 'error'>('all')
+const logFilter = ref<'all' | 'info' | 'warning' | 'error'>('all')
 const autoScroll = ref(true)
+
+// 日志获取定时器
+let logFetchInterval: NodeJS.Timeout | null = null
 
 // 筛选器状态
 const filters = ref({
@@ -430,6 +433,9 @@ const startProgressUpdate = () => {
   stopProgressUpdate()
   addLog('info', '开始监控分析任务进度')
 
+  // 启动日志获取
+  startLogFetch()
+
   progressUpdateInterval = setInterval(async () => {
     if (currentTask.value && currentTask.value.status === 'running') {
       try {
@@ -438,10 +444,12 @@ const startProgressUpdate = () => {
         // 如果任务完成，停止更新并加载结果
         if (task.status === 'completed' || task.status === 'failed') {
           stopProgressUpdate()
+          addLog('info', `任务${task.status === 'completed' ? '完成' : '失败'}`)
           await loadResults()
         }
       } catch (error) {
         console.error('更新任务状态失败:', error)
+        addLog('error', '更新任务状态失败: ' + (error as string))
         // 如果任务不存在，停止更新
         if ((error as string).toString().includes('分析任务不存在')) {
           stopProgressUpdate()
@@ -456,6 +464,9 @@ const stopProgressUpdate = () => {
     clearInterval(progressUpdateInterval)
     progressUpdateInterval = null
   }
+
+  // 停止日志获取
+  stopLogFetch()
 }
 
 // 监听当前任务变化
@@ -480,6 +491,9 @@ onUnmounted(() => {
   stopProgressUpdate()
   // 移除事件监听
   window.removeEventListener('switchToAnalysis', handleSwitchToAnalysis)
+
+  // 清理日志定时器
+  stopLogFetch()
 })
 
 // 处理从文章页面跳转过来的事件
@@ -905,22 +919,72 @@ const filteredLogs = computed(() => {
 
 // 日志统计
 const logStats = computed(() => {
-  const stats = { info: 0, warn: 0, error: 0, debug: 0 }
+  const stats = { info: 0, warning: 0, error: 0 }
   analysisLogs.value.forEach(log => {
-    stats[log.level]++
+    if (log.level === 'info') stats.info++
+    else if (log.level === 'warning') stats.warning++
+    else if (log.level === 'error') stats.error++
   })
   return stats
 })
 
-// 添加日志（模拟后端日志推送）
-const addLog = (level: AnalysisLog['level'], message: string, context?: AnalysisLog['context']) => {
+// 获取日志数据
+const fetchLogs = async () => {
+  try {
+    const taskId = currentTask.value?.id
+    const logs = await invoke<AnalysisLog[]>('get_analysis_logs', {
+      taskId: taskId || null,
+      level: null,
+      limit: 1000
+    })
+
+    analysisLogs.value = logs.map(log => ({
+      ...log,
+      timestamp: log.created_at
+    }))
+
+    // 如果启用自动滚动，滚动到底部
+    if (autoScroll.value) {
+      await nextTick()
+      scrollLogsToBottom()
+    }
+  } catch (error) {
+    console.error('获取日志失败:', error)
+  }
+}
+
+// 启动自动获取日志
+const startLogFetch = () => {
+  stopLogFetch() // 停止现有的定时器
+
+  // 立即获取一次日志
+  fetchLogs()
+
+  // 启动定时获取日志（每3秒）
+  logFetchInterval = setInterval(fetchLogs, 3000)
+}
+
+// 停止自动获取日志
+const stopLogFetch = () => {
+  if (logFetchInterval) {
+    clearInterval(logFetchInterval)
+    logFetchInterval = null
+  }
+}
+
+// 添加日志（临时日志，用于前端操作提示）
+const addLog = (level: AnalysisLog['level'], message: string) => {
+  // 只在任务运行时显示前端临时日志
+  if (!currentTask.value || currentTask.value.status !== 'running') {
+    return
+  }
+
   const log: AnalysisLog = {
-    id: Date.now().toString(),
-    timestamp: new Date().toISOString(),
+    id: `front_${Date.now().toString()}`,
+    created_at: new Date().toISOString(),
     level,
     message,
-    task_id: currentTask.value?.id || '',
-    context
+    task_id: currentTask.value.id
   }
   analysisLogs.value.push(log)
 
@@ -946,13 +1010,38 @@ const scrollLogsToBottom = () => {
 }
 
 // 清空日志
-const clearLogs = () => {
-  analysisLogs.value = []
+const clearLogs = async () => {
+  try {
+    const taskId = currentTask.value?.id
+    await invoke('clear_analysis_logs', {
+      taskId: taskId || null
+    })
+    analysisLogs.value = []
+  } catch (error) {
+    console.error('清空日志失败:', error)
+  }
 }
 
 // 格式化日志时间
 const formatLogTime = (timestamp: string) => {
-  const date = new Date(timestamp)
+  let date: Date
+
+  // 处理不同的时间戳格式
+  if (timestamp.includes('T') && timestamp.includes('Z')) {
+    // ISO 格式 (YYYY-MM-DDTHH:MM:SSZ)
+    date = new Date(timestamp)
+  } else if (timestamp.includes(' ')) {
+    // 包含空格的格式 (可能来自后端的 created_at)
+    date = new Date(timestamp)
+  } else {
+    // 时间戳数字 (省略前端的临时日志)
+    date = new Date(timestamp)
+  }
+
+  if (isNaN(date.getTime())) {
+    return timestamp // 如果解析失败，返回原始字符串
+  }
+
   return date.toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit',

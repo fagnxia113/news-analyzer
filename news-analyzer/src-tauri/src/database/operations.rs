@@ -1501,4 +1501,148 @@ impl Database {
         
         Ok(all_articles)
     }
+
+    // ========== 分析日志相关操作 ==========
+
+    // 创建分析日志表
+    pub fn create_analysis_logs_table(&self) -> Result<()> {
+        let conn = self.get_connection();
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS analysis_logs (
+                id TEXT PRIMARY KEY,
+                timestamp TEXT NOT NULL,
+                level TEXT NOT NULL,
+                message TEXT NOT NULL,
+                task_id TEXT NOT NULL,
+                context TEXT,
+                created_at TEXT NOT NULL
+            )",
+            [],
+        )?;
+
+        // 创建索引以提高查询性能
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_task_id ON analysis_logs(task_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_timestamp ON analysis_logs(timestamp)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_level ON analysis_logs(level)",
+            [],
+        )?;
+
+        log::info!("分析日志表创建成功");
+        Ok(())
+    }
+
+    // 插入分析日志
+    pub fn insert_analysis_log(&self, log: &models::AnalysisLog) -> Result<()> {
+        let conn = self.get_connection();
+        conn.execute(
+            "INSERT INTO analysis_logs (id, timestamp, level, message, task_id, context, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            [
+                &log.id,
+                &log.timestamp,
+                &log.level,
+                &log.message,
+                &log.task_id,
+                &log.context.as_deref().unwrap_or(""),
+                &log.created_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    // 获取指定任务的分析日志
+    pub fn get_analysis_logs_by_task(&self, task_id: &str, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+        let conn = self.get_connection();
+
+        let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+        let sql = format!(
+            "SELECT id, timestamp, level, message, task_id, context, created_at
+             FROM analysis_logs
+             WHERE task_id = ?
+             ORDER BY timestamp DESC{}",
+            limit_clause
+        );
+
+        let mut stmt = conn.prepare(&sql)?;
+        let logs = stmt.query_map([task_id], |row| {
+            Ok(models::AnalysisLog {
+                id: row.get(0)?,
+                timestamp: row.get(1)?,
+                level: row.get(2)?,
+                message: row.get(3)?,
+                task_id: row.get(4)?,
+                context: {
+                    let context_str: String = row.get(5)?;
+                    if context_str.is_empty() {
+                        None
+                    } else {
+                        Some(context_str)
+                    }
+                },
+                created_at: row.get(6)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(logs)
+    }
+
+    // 获取所有分析日志
+    pub fn get_all_analysis_logs(&self, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+        let conn = self.get_connection();
+
+        let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+        let sql = format!(
+            "SELECT id, timestamp, level, message, task_id, context, created_at
+             FROM analysis_logs
+             ORDER BY timestamp DESC{}",
+            limit_clause
+        );
+
+        let mut stmt = conn.prepare(&sql)?;
+        let logs = stmt.query_map([], |row| {
+            Ok(models::AnalysisLog {
+                id: row.get(0)?,
+                timestamp: row.get(1)?,
+                level: row.get(2)?,
+                message: row.get(3)?,
+                task_id: row.get(4)?,
+                context: {
+                    let context_str: String = row.get(5)?;
+                    if context_str.is_empty() {
+                        None
+                    } else {
+                        Some(context_str)
+                    }
+                },
+                created_at: row.get(6)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(logs)
+    }
+
+    // 清空指定任务的分析日志
+    pub fn clear_analysis_logs(&self, task_id: &str) -> Result<()> {
+        let conn = self.get_connection();
+        conn.execute("DELETE FROM analysis_logs WHERE task_id = ?", [task_id])?;
+        log::info!("已清空任务 {} 的分析日志", task_id);
+        Ok(())
+    }
+
+    // 清空所有分析日志
+    pub fn clear_all_analysis_logs(&self) -> Result<()> {
+        let conn = self.get_connection();
+        conn.execute("DELETE FROM analysis_logs", [])?;
+        log::info!("已清空所有分析日志");
+        Ok(())
+    }
 }

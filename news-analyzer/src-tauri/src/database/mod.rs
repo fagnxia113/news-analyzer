@@ -80,7 +80,10 @@ impl Database {
         
         // 检查并创建提示词模板表
         Self::migrate_prompt_templates_table(conn)?;
-        
+
+        // 检查并创建分析日志表
+        Self::create_analysis_logs_table(conn)?;
+
         // 初始化默认数据
         Self::init_default_data(conn)?;
         
@@ -335,7 +338,42 @@ impl Database {
         
         Ok(())
     }
-    
+
+    /// 检查并创建分析日志表
+    fn create_analysis_logs_table(&self, conn: &mut Connection) -> Result<()> {
+        // 检查 analysis_logs 表是否存在
+        let analysis_logs_exists = {
+            let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'analysis_logs\'")?;
+            let results: Vec<String> = stmt.query_map([], |row| {
+                Ok(row.get::<_, String>(0)?)
+            })?.collect::<Result<Vec<_>, _>>()?;
+            !results.is_empty()
+        };
+
+        if !analysis_logs_exists {
+            log::info!("创建 analysis_logs 表");
+            conn.execute(
+                "CREATE TABLE analysis_logs (
+                    id TEXT PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    level TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    task_id TEXT NOT NULL,
+                    context TEXT,
+                    created_at TEXT NOT NULL
+                )",
+                [],
+            )?;
+
+            // 创建索引以提高查询性能
+            conn.execute("CREATE INDEX idx_analysis_logs_task_id ON analysis_logs(task_id)", [])?;
+            conn.execute("CREATE INDEX idx_analysis_logs_timestamp ON analysis_logs(timestamp)", [])?;
+            conn.execute("CREATE INDEX idx_analysis_logs_level ON analysis_logs(level)", [])?;
+        }
+
+        Ok(())
+    }
+
     /// 初始化默认数据
     fn init_default_data(conn: &mut Connection) -> Result<()> {
         // 检查 industry_types 表是否存在并有数据

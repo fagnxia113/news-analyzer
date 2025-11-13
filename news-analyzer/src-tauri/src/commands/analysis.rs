@@ -204,127 +204,178 @@ async fn run_analysis(
     _news_types: &[String], // 不再使用，保留参数兼容性
 ) -> Result<()> {
     log::info!("开始运行分析任务: {}, 文章数量: {}", task_id, article_ids.len());
-    
+
+    // 记录开始日志
+    let _ = add_log(db, task_id, "info", &format!("开始执行分析任务，共 {} 篇文章", article_ids.len()));
+
     // 更新任务状态为运行中
-    db.update_analysis_task_status(task_id, "running", 0, 0, 0, None)?;
-    
+    if let Err(e) = db.update_analysis_task_status(task_id, "running", 0, 0, 0, None) {
+        let _ = add_log(db, task_id, "error", &format!("更新任务状态失败: {}", e));
+        return Err(anyhow::anyhow!("更新任务状态失败: {}", e));
+    }
+
+    let _ = add_log(db, task_id, "info", "分析任务状态已更新为运行中");
+
     let _total_articles = article_ids.len();
     let mut processed_articles = 0;
     let mut success_count = 0;
     let mut failed_count = 0;
-    
+
     // 获取所有文章
     let articles = db.get_all_articles(1000)?;
-    log::info!("数据库中共有 {} 篇文章", articles.len());
-    
-    for article_id in article_ids.iter() {
-        log::info!("处理文章ID: {}", article_id);
-        
+    let _ = add_log(db, task_id, "info", &format!("从数据库获取到 {} 篇文章", articles.len()));
+
+    for (index, article_id) in article_ids.iter().enumerate() {
+        let _ = add_log(db, task_id, "info", &format!("开始处理第 {}/{} 篇文章: {}", index + 1, article_ids.len(), article_id));
+
         // 获取文章信息
         let article = articles.iter().find(|a| &a.id == article_id);
-        
+
         if let Some(article) = article {
+            let _ = add_log(db, task_id, "info", &format!("找到文章: {} ({})", article.title, article.url));
+
             // 爬取网页内容
+            let _ = add_log(db, task_id, "info", &format!("开始爬取网页内容: {}", article.url));
+
             match fetch_web_content(&article.url).await {
                 Ok(content) => {
+                    let _ = add_log(db, task_id, "info", &format!("成功爬取网页内容，长度: {} 字符", content.len()));
+
                     // 调用LLM分析（使用提示词模板）
+                    let _ = add_log(db, task_id, "info", "开始调用LLM进行分析");
+
                     match analyze_with_llm(db, &content, &[], &[], &article.url).await {
                         Ok(response) => {
-                            log::info!("LLM分析成功，提取到 {} 条新闻", response.news_list.len());
-                            
+                            let _ = add_log(db, task_id, "info", &format!("LLM分析成功，提取到 {} 条新闻", response.news_list.len()));
+
                             // 保存分析结果，进行去重检查
-                            for (index, news_item) in response.news_list.iter().enumerate() {
-                                log::info!("处理第 {} 条分析结果: {}", index + 1, news_item.title);
-                                
+                            for (news_index, news_item) in response.news_list.iter().enumerate() {
+                                let _ = add_log(db, task_id, "info", &format!("处理第 {} 条新闻: {}", news_index + 1, news_item.title));
+
                                 // 检查是否为重复新闻
-                                let is_duplicate = check_news_duplicate(
+                                match check_news_duplicate(
                                     db,
                                     &news_item.title,
                                     &news_item.summary,
                                     &news_item.industry_type,
                                     &news_item.news_type,
-                                ).await;
-                                
-                                if is_duplicate.unwrap_or(false) {
-                                    log::info!("跳过重复新闻: {}", news_item.title);
-                                    continue;
-                                }
-                                
-                                let analyzed_news = AnalyzedNews {
-                                    id: uuid::Uuid::new_v4().to_string(),
-                                    task_id: task_id.to_string(),
-                                    article_id: article_id.clone(),
-                                    title: news_item.title.clone(),
-                                    content: content.clone(),
-                                    summary: news_item.summary.clone(),
-                                    is_soft_news: false, // 这里可以根据LLM响应设置
-                                    industry_type: news_item.industry_type.clone(), // 直接使用名称
-                                    news_type: news_item.news_type.clone(), // 直接使用名称
-                                    confidence: news_item.confidence,
-                                    keywords: "".to_string(), // 可以从LLM响应中提取
-                                    original_url: article.url.clone(),
-                                    analyzed_at: chrono::Utc::now().to_rfc3339(),
-                                    created_at: chrono::Utc::now().to_rfc3339(),
-                                    updated_at: chrono::Utc::now().to_rfc3339(),
-                                };
-                                
-                                match db.insert_analyzed_news(&analyzed_news) {
-                                    Ok(_) => {
-                                        log::info!("成功保存分析结果: {} (行业: {}, 新闻: {})", 
-                                            news_item.title, news_item.industry_type, news_item.news_type);
+                                ).await {
+                                    Ok(is_duplicate) => {
+                                        if is_duplicate {
+                                            let _ = add_log(db, task_id, "info", &format!("跳过重复新闻: {}", news_item.title));
+                                            continue;
+                                        }
+
+                                        let analyzed_news = AnalyzedNews {
+                                            id: uuid::Uuid::new_v4().to_string(),
+                                            task_id: task_id.to_string(),
+                                            article_id: article_id.clone(),
+                                            title: news_item.title.clone(),
+                                            content: content.clone(),
+                                            summary: news_item.summary.clone(),
+                                            is_soft_news: false, // 这里可以根据LLM响应设置
+                                            industry_type: news_item.industry_type.clone(), // 直接使用名称
+                                            news_type: news_item.news_type.clone(), // 直接使用名称
+                                            confidence: news_item.confidence,
+                                            keywords: "".to_string(), // 可以从LLM响应中提取
+                                            original_url: article.url.clone(),
+                                            analyzed_at: chrono::Utc::now().to_rfc3339(),
+                                            created_at: chrono::Utc::now().to_rfc3339(),
+                                            updated_at: chrono::Utc::now().to_rfc3339(),
+                                        };
+
+                                        match db.insert_analyzed_news(&analyzed_news) {
+                                            Ok(_) => {
+                                                let _ = add_log(db, task_id, "info",
+                                                    &format!("成功保存分析结果: {} (行业: {}, 新闻: {})",
+                                                        news_item.title, news_item.industry_type, news_item.news_type));
+                                            }
+                                            Err(e) => {
+                                                let _ = add_log(db, task_id, "error",
+                                                    &format!("保存分析结果失败: {}, 标题: {}", e, news_item.title));
+                                            }
+                                        }
                                     }
                                     Err(e) => {
-                                        log::error!("保存分析结果失败: {}, 标题: {}", e, news_item.title);
+                                        let _ = add_log(db, task_id, "warning", &format!("检查重复新闻时出错: {}, 继续保存", e));
                                     }
                                 }
                             }
                             success_count += 1;
-                            log::info!("文章 {} 分析完成，成功保存 {} 条结果", article_id, response.news_list.len());
+                            let _ = add_log(db, task_id, "info",
+                                &format!("文章 {} 分析完成，成功保存 {} 条结果", article_id, response.news_list.len()));
                         }
                         Err(e) => {
-                            log::error!("LLM分析失败: {}", e);
+                            let _ = add_log(db, task_id, "error", &format!("LLM分析失败: {}", e));
                             failed_count += 1;
                         }
                     }
                 }
                 Err(e) => {
-                    log::error!("爬取网页内容失败: {}", e);
+                    let _ = add_log(db, task_id, "error", &format!("爬取网页内容失败: {}", e));
                     failed_count += 1;
                 }
             }
         } else {
-            log::error!("找不到文章: {}", article_id);
+            let _ = add_log(db, task_id, "error", &format!("找不到文章: {}", article_id));
             failed_count += 1;
         }
-        
+
         processed_articles += 1;
-        
+
         // 更新进度
-        db.update_analysis_task_status(
-            task_id, 
-            "running", 
-            processed_articles as i32, 
-            success_count, 
-            failed_count, 
+        if let Err(e) = db.update_analysis_task_status(
+            task_id,
+            "running",
+            processed_articles as i32,
+            success_count,
+            failed_count,
             None
-        )?;
-        
+        ) {
+            let _ = add_log(db, task_id, "warning", &format!("更新任务进度失败: {}", e));
+        }
+
+        let _ = add_log(db, task_id, "info",
+            &format!("任务进度: {}/{} (成功: {}, 失败: {})",
+                processed_articles, article_ids.len(), success_count, failed_count));
+
         // 添加随机延迟避免请求过于频繁（大约1分钟抓取1条）
         let delay_ms = fastrand::u64(45000..75000); // 45-75秒随机延迟
-        log::info!("等待 {} 毫秒后处理下一篇文章", delay_ms);
+        let _ = add_log(db, task_id, "info", &format!("等待 {} 秒后处理下一篇文章", delay_ms / 1000));
         sleep(Duration::from_millis(delay_ms)).await;
     }
-    
+
     // 完成分析任务
-    db.update_analysis_task_status(
-        task_id, 
-        "completed", 
-        processed_articles as i32, 
-        success_count, 
-        failed_count, 
+    if let Err(e) = db.update_analysis_task_status(
+        task_id,
+        "completed",
+        processed_articles as i32,
+        success_count,
+        failed_count,
         None
-    )?;
-    
+    ) {
+        let _ = add_log(db, task_id, "error", &format!("更新任务完成状态失败: {}", e));
+        return Err(anyhow::anyhow!("更新任务完成状态失败: {}", e));
+    }
+
+    let _ = add_log(db, task_id, "info",
+        &format!("分析任务完成！总计处理 {} 篇文章，成功 {} 篇，失败 {} 篇",
+            processed_articles, success_count, failed_count));
+
+    Ok(())
+}
+
+// 内部日志记录函数
+fn add_log(db: &Arc<crate::database::Database>, task_id: &str, level: &str, message: &str) -> Result<()> {
+    let log_entry = crate::database::models::AnalysisLog {
+        id: uuid::Uuid::new_v4().to_string(),
+        task_id: task_id.to_string(),
+        level: level.to_string(),
+        message: message.to_string(),
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+
+    db.insert_analysis_log(&log_entry)?;
     Ok(())
 }
 
@@ -1675,11 +1726,11 @@ fn get_enabled_llm_config(db: &Arc<crate::database::Database>) -> Result<(String
             let model_id = config.model_id;
             let temperature = config.temperature;
             let max_tokens = config.max_tokens;
-            
+
             if api_key.is_empty() || api_key == "sk-YourOpenAIApiKeyHere" {
                 return Err(anyhow::anyhow!("请在设置中配置有效的LLM API密钥"));
             }
-            
+
             Ok((api_key, endpoint, model_id, temperature, max_tokens))
         }
         Ok(None) => {
@@ -1702,12 +1753,98 @@ fn get_enabled_llm_config(db: &Arc<crate::database::Database>) -> Result<(String
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse::<i32>()
                 .unwrap_or(3000);
-            
+
             if api_key == "sk-YourOpenAIApiKeyHere" {
                 return Err(anyhow::anyhow!("请在设置中配置有效的LLM API密钥"));
             }
-            
+
             Ok((api_key, endpoint, model_id, temperature, max_tokens))
         }
     }
+}
+
+// 记录分析日志
+#[tauri::command]
+pub async fn add_analysis_log(
+    task_id: String,
+    level: String,
+    message: String,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let db = &state.db;
+
+    let log_entry = crate::database::models::AnalysisLog {
+        id: uuid::Uuid::new_v4().to_string(),
+        task_id: task_id.clone(),
+        level: level.clone(),
+        message: message.clone(),
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+
+    db.insert_analysis_log(&log_entry)
+        .map_err(|e| format!("插入日志失败: {}", e))?;
+
+    log::info!("记录分析日志 [{}] [{}]: {}", level, task_id, message);
+    Ok("日志记录成功".to_string())
+}
+
+// 获取分析日志
+#[tauri::command]
+pub async fn get_analysis_logs(
+    task_id: Option<String>,
+    level: Option<String>,
+    limit: Option<i32>,
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::database::models::AnalysisLog>, String> {
+    let db = &state.db;
+
+    match db.get_analysis_logs(task_id.as_deref(), level.as_deref(), limit) {
+        Ok(logs) => Ok(logs),
+        Err(e) => Err(format!("获取日志失败: {}", e)),
+    }
+}
+
+// 清空分析日志
+#[tauri::command]
+pub async fn clear_analysis_logs(
+    task_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let db = &state.db;
+
+    let count = if let Some(task_id) = task_id {
+        db.clear_analysis_logs_by_task(&task_id)
+            .map_err(|e| format!("清空任务日志失败: {}", e))?
+    } else {
+        db.clear_all_analysis_logs()
+            .map_err(|e| format!("清空所有日志失败: {}", e))?
+    };
+
+    Ok(format!("已清空 {} 条日志记录", count))
+}
+
+// 获取日志统计信息
+#[tauri::command]
+pub async fn get_log_stats(
+    task_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let db = &state.db;
+
+    let (total_count, error_count, warning_count, info_count) = if let Some(task_id) = task_id {
+        db.get_log_stats_by_task(&task_id)
+            .map_err(|e| format!("获取任务日志统计失败: {}", e))?
+    } else {
+        db.get_all_log_stats()
+            .map_err(|e| format!("获取日志统计失败: {}", e))?
+    };
+
+    let stats_json = serde_json::json!({
+        "total": total_count,
+        "error": error_count,
+        "warning": warning_count,
+        "info": info_count
+    });
+
+    Ok(serde_json::to_string_pretty(&stats_json).unwrap())
 }

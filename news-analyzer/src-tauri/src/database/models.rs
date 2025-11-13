@@ -181,3 +181,14 @@ pub struct AnalyzedNewsItem {
     pub news_type: String,
     pub confidence: f64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalysisLog {
+    pub id: String,
+    pub timestamp: String,
+    pub level: String, // 'info', 'warn', 'error', 'debug'
+    pub message: String,
+    pub task_id: String,
+    pub context: Option<String>, // JSON string for context data
+    pub created_at: String,
+}

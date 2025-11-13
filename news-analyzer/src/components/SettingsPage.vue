@@ -62,14 +62,20 @@
               </div>
             </div>
             <div class="config-actions">
-              <button class="btn btn-sm btn-secondary" @click="testLlmConfig(config)">
-                🧪 测试
+              <button
+                class="btn btn-sm btn-secondary"
+                @click="testLlmConfig(config)"
+                :disabled="testingConfigId === config.id"
+                :class="{ 'loading': testingConfigId === config.id }"
+              >
+                <span v-if="testingConfigId === config.id" class="loading-spinner">⏳</span>
+                {{ testingConfigId === config.id ? '测试中...' : '🧪 测试' }}
               </button>
               <button class="btn btn-sm btn-secondary" @click="editLlmConfig(config)">
                 ✏️ 编辑
               </button>
-              <button 
-                class="btn btn-sm" 
+              <button
+                class="btn btn-sm"
                 :class="config.enabled ? 'btn-warning' : 'btn-success'"
                 @click="toggleLlmConfig(config)"
               >
@@ -466,8 +472,19 @@ const toggleLlmConfig = async (config: LlmConfig) => {
   }
 }
 
+// 测试连接时的loading状态
+const testingConfigId = ref<string | null>(null)
+
 const testLlmConfig = async (config: LlmConfig) => {
+  // 防止重复点击
+  if (testingConfigId.value) {
+    return
+  }
+
+  testingConfigId.value = config.id
+
   try {
+    console.log('开始测试LLM连接:', config.name)
     const result = await invoke('test_llm_connection', {
       config: {
         name: config.name,
@@ -479,11 +496,54 @@ const testLlmConfig = async (config: LlmConfig) => {
         enabled: config.enabled
       }
     })
-    alert('连接测试成功: ' + result)
+    console.log('LLM连接测试成功:', result)
+
+    // 显示更友好的成功提示
+    if (typeof result === 'string' && result.includes('成功')) {
+      showSuccessMessage(`连接测试成功: ${config.name}`)
+    } else {
+      showSuccessMessage(`连接测试成功: ${config.name}\n${result}`)
+    }
   } catch (error) {
     console.error('LLM 连接测试失败:', error)
-    alert('连接测试失败: ' + error)
+    // 显示更详细的错误信息
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    showErrorMessage(`连接测试失败: ${config.name}\n${errorMessage}`)
+  } finally {
+    testingConfigId.value = null
   }
+}
+
+// 显示成功消息
+const showSuccessMessage = (message: string) => {
+  // 创建一个临时的成功提示元素
+  const toast = document.createElement('div')
+  toast.className = 'toast message success'
+  toast.textContent = message
+  document.body.appendChild(toast)
+
+  // 3秒后自动移除
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast)
+    }
+  }, 3000)
+}
+
+// 显示错误消息
+const showErrorMessage = (message: string) => {
+  // 创建一个临时的错误提示元素
+  const toast = document.createElement('div')
+  toast.className = 'toast message error'
+  toast.textContent = message
+  document.body.appendChild(toast)
+
+  // 5秒后自动移除（错误消息显示时间更长）
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast)
+    }
+  }, 5000)
 }
 
 // 提示词模板管理方法
@@ -1010,6 +1070,63 @@ onMounted(() => {
 
 .btn-danger:hover {
   background: #c82333;
+}
+
+/* loading状态样式 */
+.btn.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.loading-spinner {
+  display: inline-block;
+  animation: spin 1s infinite linear;
+  margin-right: 4px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Toast消息样式 */
+.toast.message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  padding: 16px 20px;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 400px;
+  word-wrap: break-word;
+  white-space: pre-line;
+  animation: slideIn 0.3s ease-out;
+}
+
+.toast.message.success {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  border-left: 4px solid #28a745;
+}
+
+.toast.message.error {
+  background: linear-gradient(135deg, #dc3545, #e74c3c);
+  border-left: 4px solid #dc3545;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* 模态框样式 */

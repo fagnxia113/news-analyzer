@@ -8,7 +8,10 @@
       "Bash(git commit -m \"Simplify GitHub Actions workflow to debug build\n\n- Remove code signing requirements\n- Use debug build for faster compilation\n- Split build into frontend and backend steps\n- Install cargo-tauri directly with specific version\n- Focus on generating executable rather than full installer bundle\n\")",
       "Bash(git commit -m \"Add troubleshooting workflow and fix configuration issues\n\n- Create test-build.yml to isolate build step failures\n- Update author email to actual GitHub account\n- Remove bundle targets to avoid complex installer generation\n- Simplify app title to remove MVP suffix\n\")",
       "Bash(git commit -m \"Fix AnalysisResultsPage compilation error\n\n- Remove duplicate startProgressUpdate function definition\n- Keep enhanced version with logging functionality\n- Fix Vue compiler error about redeclared identifiers\n\")",
-      "Bash(git commit -m \"Fix Rust compilation errors\n\n- Fix atomic import path in state.rs (use std::sync::atomic)  \n- Add missing Ordering import in feed.rs\n- Fix type mismatch in main.rs match expression\n- Remove unused imports in operations.rs\n- Clean up duplicate RSSArticle import\n\")"
+      "Bash(git commit -m \"Fix Rust compilation errors\n\n- Fix atomic import path in state.rs (use std::sync::atomic)  \n- Add missing Ordering import in feed.rs\n- Fix type mismatch in main.rs match expression\n- Remove unused imports in operations.rs\n- Clean up duplicate RSSArticle import\n\")",
+      "Bash(git push origin main --force)",
+      "Bash(git push origin main --force-with-lease)",
+      "Bash(ping github.com -n 2)"
     ],
     "deny": [],
     "ask": []
