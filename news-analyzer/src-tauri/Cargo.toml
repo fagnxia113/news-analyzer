@@ -34,3 +34,10 @@ feed-rs = "1.4"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+[[bin]]
+name = "news-analyzer-mvp"
+path = "src/main.rs"

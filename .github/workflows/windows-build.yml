@@ -35,10 +35,10 @@ jobs:
         run: cargo install tauri-cli --version ^2.0
 
       - name: Build Tauri app
-        run: cargo tauri build --debug
+        run: cargo tauri build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-executable
-          path: news-analyzer/src-tauri/target/debug/news-analyzer-mvp.exe
+          path: news-analyzer/src-tauri/target/release/bundle/msi/news-analyzer-mvp_0.1.0_x64_en-US.msi
