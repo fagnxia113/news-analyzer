@@ -1,5 +1,5 @@
 use super::Database;
-use super::models::*;
+use super::models::{WeChatAccount, Feed, Article, RssFeed, Comment, Favorite, AnalysisTask, AnalyzedNews, PromptTemplate, LlmConfig, AnalysisLog};
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use anyhow::Result;
@@ -1504,40 +1504,6 @@ impl Database {
 
     // ========== 分析日志相关操作 ==========
 
-    // 创建分析日志表
-    pub fn create_analysis_logs_table(&self) -> Result<()> {
-        let conn = self.get_connection();
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS analysis_logs (
-                id TEXT PRIMARY KEY,
-                timestamp TEXT NOT NULL,
-                level TEXT NOT NULL,
-                message TEXT NOT NULL,
-                task_id TEXT NOT NULL,
-                context TEXT,
-                created_at TEXT NOT NULL
-            )",
-            [],
-        )?;
-
-        // 创建索引以提高查询性能
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_task_id ON analysis_logs(task_id)",
-            [],
-        )?;
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_timestamp ON analysis_logs(timestamp)",
-            [],
-        )?;
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_analysis_logs_level ON analysis_logs(level)",
-            [],
-        )?;
-
-        log::info!("分析日志表创建成功");
-        Ok(())
-    }
-
     // 插入分析日志
     pub fn insert_analysis_log(&self, log: &models::AnalysisLog) -> Result<()> {
         let conn = self.get_connection();
@@ -1644,5 +1610,89 @@ impl Database {
         conn.execute("DELETE FROM analysis_logs", [])?;
         log::info!("已清空所有分析日志");
         Ok(())
+    }
+
+    // 获取分析日志（支持按条件筛选）
+    pub fn get_analysis_logs(&self, task_id: Option<&str>, level: Option<&str>, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+        let conn = self.get_connection();
+
+        let mut where_conditions = Vec::new();
+        let mut params = Vec::new();
+
+        if let Some(task_id) = task_id {
+            where_conditions.push("task_id = ?");
+            params.push(task_id.to_string());
+        }
+
+        if let Some(level) = level {
+            where_conditions.push("level = ?");
+            params.push(level.to_string());
+        }
+
+        let where_clause = if where_conditions.is_empty() {
+            String::new()
+        } else {
+            format!(" WHERE {}", where_conditions.join(" AND "))
+        };
+
+        let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+        let sql = format!(
+            "SELECT id, timestamp, level, message, task_id, context, created_at
+             FROM analysis_logs{}
+             ORDER BY timestamp DESC{}",
+            where_clause, limit_clause
+        );
+
+        let mut stmt = conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
+
+        let logs = stmt.query_map(param_refs.as_slice(), |row| {
+            Ok(models::AnalysisLog {
+                id: row.get(0)?,
+                timestamp: row.get(1)?,
+                level: row.get(2)?,
+                message: row.get(3)?,
+                task_id: row.get(4)?,
+                context: {
+                    let context_str: String = row.get(5)?;
+                    if context_str.is_empty() {
+                        None
+                    } else {
+                        Some(context_str)
+                    }
+                },
+                created_at: row.get(6)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(logs)
+    }
+
+    // 清空指定任务的分析日志（别名方法）
+    pub fn clear_analysis_logs_by_task(&self, task_id: &str) -> Result<()> {
+        self.clear_analysis_logs(task_id)
+    }
+
+    // 获取指定任务的日志统计
+    pub fn get_log_stats_by_task(&self, task_id: &str) -> Result<i32> {
+        let conn = self.get_connection();
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ?",
+            [task_id],
+            |row| row.get(0)
+        )?;
+        Ok(count)
+    }
+
+    // 获取所有日志统计
+    pub fn get_all_log_stats(&self) -> Result<i32> {
+        let conn = self.get_connection();
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs",
+            [],
+            |row| row.get(0)
+        )?;
+        Ok(count)
     }
 }
