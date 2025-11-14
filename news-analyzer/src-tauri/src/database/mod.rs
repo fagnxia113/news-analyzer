@@ -82,7 +82,7 @@ impl Database {
         Self::migrate_prompt_templates_table(conn)?;
 
         // 检查并创建分析日志表
-        Self::create_analysis_logs_table(self, conn)?;
+        Self::create_analysis_logs_table(conn)?;
 
         // 初始化默认数据
         Self::init_default_data(conn)?;
@@ -340,7 +340,7 @@ impl Database {
     }
 
     /// 检查并创建分析日志表
-    fn create_analysis_logs_table(&self, conn: &mut Connection) -> Result<()> {
+    fn create_analysis_logs_table(conn: &mut Connection) -> Result<()> {
         // 检查 analysis_logs 表是否存在
         let analysis_logs_exists = {
             let mut stmt = conn.prepare("SELECT name FROM sqlite_master WHERE type=\'table\' AND name=\'analysis_logs\'")?;

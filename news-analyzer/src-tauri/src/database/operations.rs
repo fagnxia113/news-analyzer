@@ -1,5 +1,5 @@
 use super::Database;
-use super::models::{WeChatAccount, WeChatFeed, WeChatArticle, RSSFeed, RSSArticle, AnalysisTask, AnalyzedNews, PromptTemplate, LlmConfig, AnalysisLog, AllSettings};
+use super::models::{WeChatAccount, WeChatFeed, WeChatArticle, RSSFeed, RSSArticle, AnalysisTask, AnalyzedNews, PromptTemplate, LlmConfig, AnalysisLog, AllSettings, Article};
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use anyhow::Result;
@@ -1516,7 +1516,7 @@ impl Database {
                 &log.level,
                 &log.message,
                 &log.task_id,
-                &log.context.as_deref().unwrap_or(""),
+                log.context.as_deref().unwrap_or(""),
                 &log.created_at,
             ],
         )?;
