@@ -1,5 +1,5 @@
 use super::Database;
-use super::models::{WeChatAccount, Feed, Article, RssFeed, Comment, Favorite, AnalysisTask, AnalyzedNews, PromptTemplate, LlmConfig, AnalysisLog};
+use super::models::{WeChatAccount, WeChatFeed, WeChatArticle, RSSFeed, RSSArticle, AnalysisTask, AnalyzedNews, PromptTemplate, LlmConfig, AnalysisLog, AllSettings};
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use anyhow::Result;
@@ -1505,7 +1505,7 @@ impl Database {
     // ========== 分析日志相关操作 ==========
 
     // 插入分析日志
-    pub fn insert_analysis_log(&self, log: &models::AnalysisLog) -> Result<()> {
+    pub fn insert_analysis_log(&self, log: &AnalysisLog) -> Result<()> {
         let conn = self.get_connection();
         conn.execute(
             "INSERT INTO analysis_logs (id, timestamp, level, message, task_id, context, created_at)
@@ -1524,7 +1524,7 @@ impl Database {
     }
 
     // 获取指定任务的分析日志
-    pub fn get_analysis_logs_by_task(&self, task_id: &str, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+    pub fn get_analysis_logs_by_task(&self, task_id: &str, limit: Option<i32>) -> Result<Vec<AnalysisLog>> {
         let conn = self.get_connection();
 
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
@@ -1538,7 +1538,7 @@ impl Database {
 
         let mut stmt = conn.prepare(&sql)?;
         let logs = stmt.query_map([task_id], |row| {
-            Ok(models::AnalysisLog {
+            Ok(AnalysisLog {
                 id: row.get(0)?,
                 timestamp: row.get(1)?,
                 level: row.get(2)?,
@@ -1561,7 +1561,7 @@ impl Database {
     }
 
     // 获取所有分析日志
-    pub fn get_all_analysis_logs(&self, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+    pub fn get_all_analysis_logs(&self, limit: Option<i32>) -> Result<Vec<AnalysisLog>> {
         let conn = self.get_connection();
 
         let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
@@ -1574,7 +1574,7 @@ impl Database {
 
         let mut stmt = conn.prepare(&sql)?;
         let logs = stmt.query_map([], |row| {
-            Ok(models::AnalysisLog {
+            Ok(AnalysisLog {
                 id: row.get(0)?,
                 timestamp: row.get(1)?,
                 level: row.get(2)?,
@@ -1631,7 +1631,7 @@ impl Database {
     }
 
     // 获取分析日志（支持按条件筛选）
-    pub fn get_analysis_logs(&self, task_id: Option<&str>, level: Option<&str>, limit: Option<i32>) -> Result<Vec<models::AnalysisLog>> {
+    pub fn get_analysis_logs(&self, task_id: Option<&str>, level: Option<&str>, limit: Option<i32>) -> Result<Vec<AnalysisLog>> {
         let conn = self.get_connection();
 
         let mut where_conditions = Vec::new();
@@ -1665,7 +1665,7 @@ impl Database {
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
 
         let logs = stmt.query_map(param_refs.as_slice(), |row| {
-            Ok(models::AnalysisLog {
+            Ok(AnalysisLog {
                 id: row.get(0)?,
                 timestamp: row.get(1)?,
                 level: row.get(2)?,
@@ -1688,7 +1688,7 @@ impl Database {
     }
 
     // 清空指定任务的分析日志（别名方法）
-    pub fn clear_analysis_logs_by_task(&self, task_id: &str) -> Result<()> {
+    pub fn clear_analysis_logs_by_task(&self, task_id: &str) -> Result<i32> {
         self.clear_analysis_logs(task_id)
     }
 

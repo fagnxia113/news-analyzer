@@ -372,6 +372,8 @@ fn add_log(db: &Arc<crate::database::Database>, task_id: &str, level: &str, mess
         task_id: task_id.to_string(),
         level: level.to_string(),
         message: message.to_string(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        context: None,
         created_at: chrono::Utc::now().to_rfc3339(),
     };
 
@@ -1778,6 +1780,8 @@ pub async fn add_analysis_log(
         task_id: task_id.clone(),
         level: level.clone(),
         message: message.clone(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        context: None,
         created_at: chrono::Utc::now().to_rfc3339(),
     };
 

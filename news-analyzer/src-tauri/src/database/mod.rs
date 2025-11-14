@@ -82,7 +82,7 @@ impl Database {
         Self::migrate_prompt_templates_table(conn)?;
 
         // 检查并创建分析日志表
-        Self::create_analysis_logs_table(conn)?;
+        Self::create_analysis_logs_table(self, conn)?;
 
         // 初始化默认数据
         Self::init_default_data(conn)?;
