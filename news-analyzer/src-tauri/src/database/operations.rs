@@ -1597,19 +1597,37 @@ impl Database {
     }
 
     // 清空指定任务的分析日志
-    pub fn clear_analysis_logs(&self, task_id: &str) -> Result<()> {
+    pub fn clear_analysis_logs(&self, task_id: &str) -> Result<i32> {
         let conn = self.get_connection();
+
+        // 先获取要删除的日志数量
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ?",
+            [task_id],
+            |row| row.get(0)
+        )?;
+
+        // 执行删除操作
         conn.execute("DELETE FROM analysis_logs WHERE task_id = ?", [task_id])?;
-        log::info!("已清空任务 {} 的分析日志", task_id);
-        Ok(())
+        log::info!("已清空任务 {} 的分析日志，共 {} 条", task_id, count);
+        Ok(count)
     }
 
     // 清空所有分析日志
-    pub fn clear_all_analysis_logs(&self) -> Result<()> {
+    pub fn clear_all_analysis_logs(&self) -> Result<i32> {
         let conn = self.get_connection();
+
+        // 先获取要删除的日志数量
+        let count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs",
+            [],
+            |row| row.get(0)
+        )?;
+
+        // 执行删除操作
         conn.execute("DELETE FROM analysis_logs", [])?;
-        log::info!("已清空所有分析日志");
-        Ok(())
+        log::info!("已清空所有分析日志，共 {} 条", count);
+        Ok(count)
     }
 
     // 获取分析日志（支持按条件筛选）
@@ -1675,24 +1693,64 @@ impl Database {
     }
 
     // 获取指定任务的日志统计
-    pub fn get_log_stats_by_task(&self, task_id: &str) -> Result<i32> {
+    pub fn get_log_stats_by_task(&self, task_id: &str) -> Result<(i32, i32, i32, i32)> {
         let conn = self.get_connection();
-        let count: i32 = conn.query_row(
+
+        let total_count: i32 = conn.query_row(
             "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ?",
             [task_id],
             |row| row.get(0)
         )?;
-        Ok(count)
+
+        let error_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ? AND level = 'error'",
+            [task_id],
+            |row| row.get(0)
+        )?;
+
+        let warning_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ? AND level = 'warning'",
+            [task_id],
+            |row| row.get(0)
+        )?;
+
+        let info_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE task_id = ? AND level = 'info'",
+            [task_id],
+            |row| row.get(0)
+        )?;
+
+        Ok((total_count, error_count, warning_count, info_count))
     }
 
     // 获取所有日志统计
-    pub fn get_all_log_stats(&self) -> Result<i32> {
+    pub fn get_all_log_stats(&self) -> Result<(i32, i32, i32, i32)> {
         let conn = self.get_connection();
-        let count: i32 = conn.query_row(
+
+        let total_count: i32 = conn.query_row(
             "SELECT COUNT(*) FROM analysis_logs",
             [],
             |row| row.get(0)
         )?;
-        Ok(count)
+
+        let error_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE level = 'error'",
+            [],
+            |row| row.get(0)
+        )?;
+
+        let warning_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE level = 'warning'",
+            [],
+            |row| row.get(0)
+        )?;
+
+        let info_count: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM analysis_logs WHERE level = 'info'",
+            [],
+            |row| row.get(0)
+        )?;
+
+        Ok((total_count, error_count, warning_count, info_count))
     }
 }
