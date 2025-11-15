@@ -8,6 +8,10 @@
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
+  "package": {
+    "productName": "新闻分析器",
+    "version": "0.1.0"
+  },
   "app": {
     "windows": [
       {
@@ -30,7 +34,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "wix": {
+        "language": ["zh-CN", "en-US"]
+      }
+    }
   },
   "plugins": {
     "shell": {
