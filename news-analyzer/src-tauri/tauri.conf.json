@@ -1,5 +1,5 @@
 {
-  "productName": "news-analyzer-mvp",
+  "productName": "新闻分析器",
   "version": "0.1.0",
   "identifier": "com.news-analyzer.mvp",
   "build": {
@@ -7,10 +7,6 @@
     "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
-  },
-  "package": {
-    "productName": "新闻分析器",
-    "version": "0.1.0"
   },
   "app": {
     "windows": [
