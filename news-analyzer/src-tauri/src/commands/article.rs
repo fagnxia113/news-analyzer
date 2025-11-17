@@ -23,28 +23,6 @@ pub async fn get_all_articles(
         .map_err(|e| e.to_string())
 }
 
-// 保持向后兼容性的旧版本命令（只返回微信公众号文章）
-#[tauri::command]
-pub async fn get_wechat_feed_articles(
-    feed_id: String,
-    limit: Option<i32>,
-    state: State<'_, AppState>,
-) -> Result<Vec<WeChatArticle>, String> {
-    let limit = limit.unwrap_or(0); // 0 表示返回所有文章
-    state.db.get_feed_articles(&feed_id, limit)
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub async fn get_wechat_all_articles(
-    limit: Option<i32>,
-    state: State<'_, AppState>,
-) -> Result<Vec<WeChatArticle>, String> {
-    let limit = limit.unwrap_or(0); // 0 表示返回所有文章
-    state.db.get_all_articles(limit)
-        .map_err(|e| e.to_string())
-}
-
 // 调试命令：获取RSS文章
 #[tauri::command]
 pub async fn get_rss_articles_debug(

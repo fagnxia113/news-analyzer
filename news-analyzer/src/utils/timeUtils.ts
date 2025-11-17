@@ -15,11 +15,31 @@ type FormatType = 'datetime' | 'date' | 'time' | 'relative'
  * @returns 北京时间的Date对象
  */
 export function utcToBeijingTime(utcTimestamp: number): Date {
-  // 将秒转换为毫秒
-  const utcTimeMs = utcTimestamp * 1000
-  // 加上北京时区偏移量
-  const beijingTimeMs = utcTimeMs + BEIJING_TIMEZONE_OFFSET_MS
-  return new Date(beijingTimeMs)
+  // 将秒转换为毫秒创建UTC时间
+  const utcDate = new Date(utcTimestamp * 1000)
+  // 使用toLocaleString转换为北京时间
+  const beijingString = utcDate.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  // 解析北京时间字符串重新创建Date对象
+  const [datePart, timePart] = beijingString.split(' ')
+  const [year, month, day] = datePart.split('/')
+  const [hour, minute, second] = timePart.split(':')
+  return new Date(
+    parseInt(year),
+    parseInt(month) - 1, // JavaScript月份从0开始
+    parseInt(day),
+    parseInt(hour),
+    parseInt(minute),
+    parseInt(second)
+  )
 }
 
 /**
@@ -28,12 +48,16 @@ export function utcToBeijingTime(utcTimestamp: number): Date {
  * @returns UTC时间戳（秒）
  */
 export function beijingToUtcTimestamp(beijingDate: Date): number {
-  // 获取北京时间的毫秒时间戳
-  const beijingTimeMs = beijingDate.getTime()
-  // 减去北京时区偏移量得到UTC时间
-  const utcTimeMs = beijingTimeMs - BEIJING_TIMEZONE_OFFSET_MS
-  // 转换为秒并返回
-  return Math.floor(utcTimeMs / 1000)
+  // 创建代表同一时刻的UTC时间
+  const utcTime = new Date(
+    beijingDate.getFullYear(),
+    beijingDate.getMonth(),
+    beijingDate.getDate(),
+    beijingDate.getHours() - 8, // 减去8小时转换为UTC
+    beijingDate.getMinutes(),
+    beijingDate.getSeconds()
+  )
+  return Math.floor(utcTime.getTime() / 1000)
 }
 
 /**
@@ -42,9 +66,28 @@ export function beijingToUtcTimestamp(beijingDate: Date): number {
  */
 export function getCurrentBeijingTime(): Date {
   const now = new Date()
-  const utcTimeMs = now.getTime()
-  const beijingTimeMs = utcTimeMs + BEIJING_TIMEZONE_OFFSET_MS
-  return new Date(beijingTimeMs)
+  // 使用toLocaleString获取北京时间字符串，然后解析
+  const beijingString = now.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+  const [datePart, timePart] = beijingString.split(' ')
+  const [year, month, day] = datePart.split('/')
+  const [hour, minute, second] = timePart.split(':')
+  return new Date(
+    parseInt(year),
+    parseInt(month) - 1,
+    parseInt(day),
+    parseInt(hour),
+    parseInt(minute),
+    parseInt(second)
+  )
 }
 
 /**
@@ -93,6 +136,7 @@ function formatDateToString(date: Date, format: FormatType): string {
     switch (format) {
       case 'datetime':
         return date.toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -103,12 +147,14 @@ function formatDateToString(date: Date, format: FormatType): string {
         })
       case 'date':
         return date.toLocaleDateString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
           year: 'numeric',
           month: '2-digit',
           day: '2-digit'
         })
       case 'time':
         return date.toLocaleTimeString('zh-CN', {
+          timeZone: 'Asia/Shanghai',
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
@@ -117,7 +163,9 @@ function formatDateToString(date: Date, format: FormatType): string {
       case 'relative':
         return formatRelativeTime(date)
       default:
-        return date.toLocaleString('zh-CN')
+        return date.toLocaleString('zh-CN', {
+          timeZone: 'Asia/Shanghai'
+        })
     }
   } catch (error) {
     console.error('格式化Date对象失败:', error)
@@ -141,15 +189,24 @@ export function formatDate(date: Date, format: FormatType = 'datetime'): string 
  * @returns 相对时间字符串
  */
 function formatRelativeTime(date: Date): string {
-  const now = new Date()
+  const now = getCurrentBeijingTime() // 使用北京时间
   const diff = now.getTime() - date.getTime()
-  
+
+  // 如果时间是未来时间，显示具体时间
+  if (diff < 0) {
+    return date.toLocaleString('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   // 计算时间差
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(seconds / 60)
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
-  
+
   if (days > 0) {
     return `${days}天前`
   } else if (hours > 0) {

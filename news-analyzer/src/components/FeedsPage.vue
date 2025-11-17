@@ -1313,8 +1313,31 @@ const formatTime = (timestamp: number) => {
 }
 
 const formatLogTime = (timestamp: string) => {
-  // 使用统一的时间处理工具函数
-  return formatIsoString(timestamp, 'time')
+  // 使用统一的时间处理工具函数，并指定北京时间
+  let date: Date
+
+  // 处理不同的时间戳格式
+  if (timestamp.includes('T') && timestamp.includes('Z')) {
+    // ISO 格式
+    date = new Date(timestamp)
+  } else if (timestamp.includes(' ')) {
+    // 包含空格的格式
+    date = new Date(timestamp)
+  } else {
+    // 时间戳数字
+    date = new Date(timestamp)
+  }
+
+  if (isNaN(date.getTime())) {
+    return timestamp
+  }
+
+  return date.toLocaleTimeString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
 const openArticle = async (article: any) => {

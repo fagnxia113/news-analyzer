@@ -1042,11 +1042,13 @@ const formatLogTime = (timestamp: string) => {
     return timestamp // 如果解析失败，返回原始字符串
   }
 
+  // 使用北京时间
   return date.toLocaleTimeString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
-    fractionalSecondDigits: 3
+    second: '2-digit'
+  })
   })
 }
 </script>
