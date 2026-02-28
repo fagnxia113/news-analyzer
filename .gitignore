@@ -32,6 +32,3 @@ npm-debug.log*
 
 # News analysis results
 新闻分析结果/
-
-# Sub-project with its own git repository
-wechat-article-exporter/
