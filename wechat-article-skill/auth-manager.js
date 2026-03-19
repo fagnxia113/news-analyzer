@@ -9,8 +9,8 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const BASE_URL = 'http://127.0.0.1:3200';
-// 默认的登录密钥
-const DEFAULT_AUTH_KEY = '8e17ddbc05714c7abb069fe07f508ecd';
+// 默认的登录密钥 (2026-03-18 更新)
+const DEFAULT_AUTH_KEY = 'de4e7917d2a14493a99c7ff108901846';
 
 // 会话文件路径
 const SESSION_FILE = path.join(new URL('.', import.meta.url).pathname, '.session.json');
@@ -226,7 +226,7 @@ async function main() {
     console.error(`✗ API 连接失败: ${error.message}`);
     console.log('\n建议：');
     console.log('1. 检查微信文章导出器是否正在运行');
-    console.log('2. 检查端口 3000 是否正确');
+    console.log('2. 检查端口 3200 是否正确');
     console.log('3. 尝试重新获取登录密钥');
   }
 }
