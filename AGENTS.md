@@ -31,17 +31,18 @@
 │      告诉用户"需要扫码登录，请在浏览器中操作"         │
 │      等待用户扫码完成后再继续                         │
 ├──────────────────────────────────────────────────────┤
-│ 3. 获取并更新 Auth Key                               │
-│    → 访问 http://localhost:3200/api/public/v1/authkey │
-│    → 将返回的 key 更新到 .env 文件的 AUTH_KEY 变量    │
-│    → 注意：Auth Key 有效期4天，过期需重新登录获取     │
-├──────────────────────────────────────────────────────┤
-│ 4. 运行日报分析脚本                                  │
+│ 3. 运行日报分析脚本                                  │
 │    cd wechat-article-skill                           │
 │    node daily-analysis-llm.js                        │
 │    → 默认时间范围：昨天7:00 到今天7:00               │
 │    → 输出文件：output/{INDUSTRY_NAME}动态日报MMDD.md │
 │    → 注意：脚本运行期间不要停止 exporter 服务         │
+├──────────────────────────────────────────────────────┤
+│ 4. 如脚本报 "invalid session"（Auth Key 过期）       │
+│    → 访问 http://localhost:3200/api/public/v1/authkey │
+│    → 将返回的 key 更新到 .env 文件的 AUTH_KEY 变量    │
+│    → 重新运行脚本（步骤3）                            │
+│    → 注意：Auth Key 有效期4天，通常不需要每次重新获取 │
 └──────────────────────────────────────────────────────┘
 
 阶段2：排版与保存草稿（需要 Chrome DevTools MCP）
@@ -88,7 +89,8 @@
 
 ### Auth Key 管理
 - 存储在 `wechat-article-skill/.env` 文件的 `AUTH_KEY` 变量中
-- 有效期4天，过期后 API 返回 `invalid session`
+- 有效期4天，通常不需要每次重新获取
+- **仅在脚本报 "invalid session" 时**才需要重新获取
 - 获取新 Key：访问 `http://localhost:3200/api/public/v1/authkey`
 - 更新方式：修改 `.env` 文件中的 `AUTH_KEY` 值
 

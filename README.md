@@ -61,7 +61,7 @@
 
 **所需配置**：
 - 启动 wechat-article-exporter 服务
-- 获取 Auth Key（扫码登录后从 API 获取）
+- 配置 Auth Key（首次扫码登录后写入 `.env`，有效期4天，过期后脚本会报错再重新获取）
 - 配置行业参数（`INDUSTRY_NAME` / `INDUSTRY_KEYWORDS` / `INDUSTRY_CATEGORIES`）
 - Chrome DevTools MCP 已连接
 
