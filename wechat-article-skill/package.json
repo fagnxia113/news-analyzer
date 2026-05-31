@@ -1,0 +1,34 @@
+{
+  "name": "wechat-article-skill",
+  "version": "2.0.0",
+  "description": "WeChat Article Exporter and News Analysis Suite - Claude Workflow Skill",
+  "type": "module",
+  "scripts": {
+    "daily": "node daily-analysis-llm.js",
+    "daily-llm": "node daily-analysis-llm.js",
+    "weekly": "node weekly-analysis.js",
+    "recent": "node recent-articles.js",
+    "config": "node config-manager.js"
+  },
+  "keywords": [
+    "wechat",
+    "article",
+    "exporter",
+    "news-analysis",
+    "china-tech",
+    "claude",
+    "workflow"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@claude-ai/sdk": "latest",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+target/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+analysis-log.txt
+run.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Session files
+.session.json
+
+# Claude settings
+.claude/
+.claude/settings.local.json
+
+# Temporary files
+*.tmp
+*.temp
+
+# News analysis results
+新闻分析结果/
+
+# Output
+output/
