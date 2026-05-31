@@ -7,12 +7,13 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const BASE_URL = process.env.WECHAT_EXPORTER_URL || 'http://127.0.0.1:3200';
 
 async function loadAuthKeyFromEnv() {
   try {
-    const envPath = path.join(new URL('.', import.meta.url).pathname, '.env');
+    const envPath = path.join(fileURLToPath(new URL('.', import.meta.url)), '.env');
     const content = await fs.readFile(envPath, 'utf-8');
     const match = content.match(/^AUTH_KEY=(.+)$/m);
     if (match) {
@@ -29,8 +30,7 @@ async function loadAuthKeyFromEnv() {
 
 const DEFAULT_AUTH_KEY = process.env.AUTH_KEY || await loadAuthKeyFromEnv();
 
-// 会话文件路径
-const SESSION_FILE = path.join(new URL('.', import.meta.url).pathname, '.session.json');
+const SESSION_FILE = path.join(fileURLToPath(new URL('.', import.meta.url)), '.session.json');
 
 // 登录密钥的有效期（天）
 const AUTH_KEY_EXPIRY_DAYS = 4;
