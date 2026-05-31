@@ -26,5 +26,8 @@ docs
 .env.*
 !.env.example
 
+# Sample data (contains tokens)
+samples/
+
 # wrangler
 .wrangler
