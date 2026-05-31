@@ -1,36 +1,68 @@
 # News Analyzer
 
-微信公众号新闻自动分析工具。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，一键发布到微信公众号。
+微信公众号新闻自动分析工具。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，排版后一键发布到微信公众号。
 
 基于 [wechat-article-exporter](https://github.com/wechat-article/wechat-article-exporter) 提供微信文章数据接口。
 
-## 功能
+## 完整工作流
 
-- 自动获取微信公众号文章
-- LLM 智能提取新闻、去重、分类
-- AI 筛选今日重点新闻（含深度解读）
-- 生成 Markdown 格式日报
-- 花生编辑器排版 → 微信公众号一键发布
-- 行业可配置，适配任何领域
+本工具覆盖从分析到发布的完整流程：
+
+```
+获取文章 → LLM 分析 → 生成日报 → 花生编辑器排版 → 微信公众号发布
+```
+
+具体步骤：
+
+1. **启动服务** — 运行 wechat-article-exporter，扫码登录
+2. **生成日报** — Agent 调用 API 获取文章，LLM 分析生成 Markdown 日报
+3. **排版** — 在花生编辑器（https://editor.huasheng.ai/）中粘贴内容，转为微信公众号格式
+4. **发布** — 在微信公众号后台选择已有文章作为模板，替换标题和正文，保存为草稿
+
+## 前置依赖
+
+### 必需
+
+- **Node.js** — 运行 wechat-article-exporter 和分析脚本
+- **AI Agent** — 支持 Claude Code、Codex、Gemini、Trae、Cline 等任意 Agent
+- **Chrome DevTools MCP** — Agent 操作浏览器的工具（排版和发布阶段必须，仅方式一需要）
+- **微信公众号** — 需要管理员权限，用于扫码登录和发布文章
+
+### 可选
+
+- **LLM API Key** — 仅"方式二"需要，方式一由 Agent 自身完成分析
 
 ## 两种使用方式
 
-### 方式一：AI 助手直接分析（零配置，推荐）
+### 方式一：Agent 端到端执行（零配置，推荐）
 
-通过 Claude Code 等 AI 助手使用，无需配置 LLM API Key。AI 助手直接调用 exporter API 获取文章，利用自身 LLM 能力完成分析。
+对 Agent 说 **"分析新闻"** 或 **"发日报"**，Agent 自动完成从生成到发布的全部操作：
+
+- 调用 exporter API 获取文章
+- 利用自身 LLM 能力完成分析（无需额外 API Key）
+- 通过 Chrome DevTools MCP 操作浏览器完成排版和发布
+
+**如何触发**：
+
+| Agent | 触发方式 |
+|-------|---------|
+| Claude Code | 直接说"分析新闻"或"发日报"，自动读取 `CLAUDE.md` → `AGENTS.md` |
+| Codex | 直接说"分析新闻"或"发日报"，自动读取 `AGENTS.md` |
+| 其他 Agent | 首次使用时说"请阅读 AGENTS.md，然后分析新闻"，后续直接说"分析新闻"即可 |
 
 **所需配置**：
 - 启动 wechat-article-exporter 服务
 - 获取 Auth Key（扫码登录后从 API 获取）
 - 配置行业参数（`INDUSTRY_NAME` / `INDUSTRY_KEYWORDS` / `INDUSTRY_CATEGORIES`）
+- Chrome DevTools MCP 已连接
 
 **不需要**：`LLM_API_KEY`、`LLM_PROVIDER`、`LLM_MODEL`
 
-**适合**：日常使用，分析质量高，零额外成本
+**适合**：日常使用，分析质量高，零额外成本，全自动
 
 ### 方式二：脚本独立运行（自定义 API）
 
-运行 `daily-analysis-llm.js`，脚本自行调用外部 LLM API 完成分析，适合自动化和定时任务。
+运行 `daily-analysis-llm.js`，脚本自行调用外部 LLM API 完成分析，仅生成 Markdown 日报文件。排版和发布需手动操作或由 Agent 后续执行。
 
 **所需配置**：
 - 启动 wechat-article-exporter 服务
@@ -70,9 +102,11 @@ npx nuxt dev --port 3200
 
 浏览器访问 http://localhost:3200 ，扫码登录微信公众号。
 
-### 4. 运行分析
+### 4. 运行
 
-**方式一**：在 Claude Code 中说"分析新闻"
+**方式一**：对 Agent 说 **"分析新闻"**
+
+Agent 将自动执行：生成日报 → 花生编辑器排版 → 微信公众号发布（保存为草稿）
 
 **方式二**：
 ```bash
@@ -80,7 +114,7 @@ cd wechat-article-skill
 node daily-analysis-llm.js
 ```
 
-报告输出到 `output/` 目录。
+报告输出到 `output/` 目录。排版和发布需手动操作。
 
 ## 行业配置
 
@@ -111,17 +145,18 @@ INDUSTRY_CATEGORIES=💰 融资与投资:融资、投资等,☀️ 光伏:光伏
 ## 项目结构
 
 ```
-├── wechat-article-exporter/    # 微信文章导出器（Nuxt.js，端口 3200）
-├── wechat-article-skill/       # 分析脚本
-│   ├── daily-analysis-llm.js   # 日报分析主脚本（方式二）
-│   ├── weekly-analysis.js      # 周报分析脚本
-│   ├── llm-analyzer.js         # LLM 分析核心模块
-│   ├── auth-manager.js         # 认证管理
-│   ├── config-manager.js       # 配置管理（LLM + 行业）
-│   ├── recent-articles.js      # 文章获取
-│   └── .env.example            # 配置模板
-├── output/                     # 日报输出目录
-└── CLAUDE.md                   # AI 助手工作流配置
+├── AGENTS.md                    # Agent 工作流配置（通用，所有 Agent 读取）
+├── CLAUDE.md                    # Claude Code 专用入口（引用 AGENTS.md）
+├── wechat-article-exporter/     # 微信文章导出器（Nuxt.js，端口 3200）
+├── wechat-article-skill/        # 分析脚本
+│   ├── daily-analysis-llm.js    # 日报分析主脚本（方式二）
+│   ├── weekly-analysis.js       # 周报分析脚本
+│   ├── llm-analyzer.js          # LLM 分析核心模块
+│   ├── auth-manager.js          # 认证管理
+│   ├── config-manager.js        # 配置管理（LLM + 行业）
+│   ├── recent-articles.js       # 文章获取
+│   └── .env.example             # 配置模板
+└── output/                      # 日报输出目录
 ```
 
 ## 支持的 LLM 服务（方式二）
