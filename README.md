@@ -1,15 +1,15 @@
 # News Analyzer
 
-微信公众号新闻自动分析工具。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，排版后一键发布到微信公众号。
+微信公众号新闻自动分析工具。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，排版后保存为微信公众号草稿，由用户自行审核发布。
 
 基于 [wechat-article-exporter](https://github.com/wechat-article/wechat-article-exporter) 提供微信文章数据接口。
 
 ## 完整工作流
 
-本工具覆盖从分析到发布的完整流程：
+本工具覆盖从分析到保存草稿的完整流程，最终由用户自行审核发布：
 
 ```
-获取文章 → LLM 分析 → 生成日报 → 花生编辑器排版 → 微信公众号发布
+获取文章 → LLM 分析 → 生成日报 → 花生编辑器排版 → 微信公众号保存为草稿 → 用户审核发布
 ```
 
 具体步骤：
@@ -17,7 +17,8 @@
 1. **启动服务** — 运行 wechat-article-exporter，扫码登录
 2. **生成日报** — Agent 调用 API 获取文章，LLM 分析生成 Markdown 日报
 3. **排版** — 在花生编辑器（https://editor.huasheng.ai/）中粘贴内容，转为微信公众号格式
-4. **发布** — 在微信公众号后台选择已有文章作为模板，替换标题和正文，保存为草稿
+4. **保存草稿** — 在微信公众号后台替换标题和正文，保存为草稿
+5. **用户发布** — 用户登录微信公众号后台，审核草稿后手动发布
 
 ## 前置依赖
 
@@ -25,8 +26,8 @@
 
 - **Node.js** — 运行 wechat-article-exporter 和分析脚本
 - **AI Agent** — 支持 Claude Code、Codex、Gemini、Trae、Cline 等任意 Agent
-- **Chrome DevTools MCP** — Agent 操作浏览器的工具（排版和发布阶段必须，仅方式一需要）
-- **微信公众号** — 需要管理员权限，用于扫码登录和发布文章
+- **Chrome DevTools MCP** — Agent 操作浏览器的工具（排版和保存草稿阶段必须，仅方式一需要）
+- **微信公众号** — 需要管理员权限，用于扫码登录和保存草稿
 
 ### 可选
 
@@ -36,19 +37,27 @@
 
 ### 方式一：Agent 端到端执行（零配置，推荐）
 
-对 Agent 说 **"分析新闻"** 或 **"发日报"**，Agent 自动完成从生成到发布的全部操作：
+对 Agent 说 **"分析新闻"** 或 **"发日报"**，Agent 自动完成从生成到保存草稿的全部操作，最终由用户审核发布。
 
 - 调用 exporter API 获取文章
 - 利用自身 LLM 能力完成分析（无需额外 API Key）
-- 通过 Chrome DevTools MCP 操作浏览器完成排版和发布
+- 通过 Chrome DevTools MCP 操作浏览器完成排版和保存草稿
 
-**如何触发**：
+**触发方式**：
 
-| Agent | 触发方式 |
-|-------|---------|
-| Claude Code | 直接说"分析新闻"或"发日报"，自动读取 `CLAUDE.md` → `AGENTS.md` |
-| Codex | 直接说"分析新闻"或"发日报"，自动读取 `AGENTS.md` |
-| 其他 Agent | 首次使用时说"请阅读 AGENTS.md，然后分析新闻"，后续直接说"分析新闻"即可 |
+| 说法 | 说明 |
+|------|------|
+| "分析新闻" 或 "发日报" | 分析昨天7:00到今天7:00的新闻（默认时间范围） |
+| "分析从昨天下午到今天的新闻" | 自定义时间范围，Agent 会调整脚本参数 |
+| "分析5月30号的新闻" | 指定日期，Agent 会计算对应时间范围 |
+
+**不同 Agent 的使用方式**：
+
+| Agent | 说明 |
+|-------|------|
+| Claude Code | 直接说即可，自动读取 `CLAUDE.md` → `AGENTS.md` |
+| Codex | 直接说即可，自动读取 `AGENTS.md` |
+| 其他 Agent | 首次使用时说"请阅读 AGENTS.md，然后分析新闻"，后续直接说即可 |
 
 **所需配置**：
 - 启动 wechat-article-exporter 服务
@@ -58,11 +67,11 @@
 
 **不需要**：`LLM_API_KEY`、`LLM_PROVIDER`、`LLM_MODEL`
 
-**适合**：日常使用，分析质量高，零额外成本，全自动
+**适合**：日常使用，分析质量高，零额外成本，全自动保存草稿
 
 ### 方式二：脚本独立运行（自定义 API）
 
-运行 `daily-analysis-llm.js`，脚本自行调用外部 LLM API 完成分析，仅生成 Markdown 日报文件。排版和发布需手动操作或由 Agent 后续执行。
+运行 `daily-analysis-llm.js`，脚本自行调用外部 LLM API 完成分析，仅生成 Markdown 日报文件。排版和保存草稿需手动操作或由 Agent 后续执行。
 
 **所需配置**：
 - 启动 wechat-article-exporter 服务
@@ -106,7 +115,7 @@ npx nuxt dev --port 3200
 
 **方式一**：对 Agent 说 **"分析新闻"**
 
-Agent 将自动执行：生成日报 → 花生编辑器排版 → 微信公众号发布（保存为草稿）
+Agent 将自动执行：生成日报 → 花生编辑器排版 → 微信公众号保存为草稿 → 用户审核发布
 
 **方式二**：
 ```bash
@@ -114,7 +123,7 @@ cd wechat-article-skill
 node daily-analysis-llm.js
 ```
 
-报告输出到 `output/` 目录。排版和发布需手动操作。
+报告输出到 `output/` 目录。排版和保存草稿需手动操作。
 
 ## 行业配置
 
@@ -122,9 +131,11 @@ node daily-analysis-llm.js
 
 | 变量 | 说明 | 示例 |
 |------|------|------|
-| `INDUSTRY_NAME` | 行业名称（用于标题和文件名） | `算力，数据中心，AI` |
+| `INDUSTRY_NAME` | 行业名称（用于标题和文件名，不含 emoji） | `算力，数据中心，AI` |
 | `INDUSTRY_KEYWORDS` | 筛选关键词（逗号分隔） | `算力,数据中心,AI,GPU,芯片` |
-| `INDUSTRY_CATEGORIES` | 分类体系（格式: emoji 名称:描述） | `💰 融资与投资:融资、投资等` |
+| `INDUSTRY_CATEGORIES` | 分类体系（格式: emoji 名称:描述） | `融资与投资:融资、投资等` |
+
+> **注意**：`INDUSTRY_CATEGORIES` 中的 emoji 仅用于日报正文的分类标题装饰，不会出现在微信公众号的文章标题中。文章标题格式为 `{INDUSTRY_NAME}动态日报 YYYY年M月D号`，不含任何 emoji。
 
 ### 行业示例
 
@@ -132,14 +143,14 @@ node daily-analysis-llm.js
 ```env
 INDUSTRY_NAME=医疗健康
 INDUSTRY_KEYWORDS=医疗,健康,医药,生物,器械,临床
-INDUSTRY_CATEGORIES=💰 融资与投资:融资、投资等,🏥 医疗政策:政策法规等,💊 新药研发:新药审批、临床试验等,⚠️ 风险:安全事件等,📊 其他:其他
+INDUSTRY_CATEGORIES=融资与投资:融资、投资等,医疗政策:政策法规等,新药研发:新药审批、临床试验等,风险:安全事件等,其他:其他
 ```
 
 **新能源**：
 ```env
 INDUSTRY_NAME=新能源
 INDUSTRY_KEYWORDS=光伏,储能,新能源,电池,充电桩,碳中和
-INDUSTRY_CATEGORIES=💰 融资与投资:融资、投资等,☀️ 光伏:光伏技术、项目等,🔋 储能:储能技术、项目等,⚠️ 风险:安全事件等,📊 其他:其他
+INDUSTRY_CATEGORIES=融资与投资:融资、投资等,光伏:光伏技术、项目等,储能:储能技术、项目等,风险:安全事件等,其他:其他
 ```
 
 ## 项目结构
