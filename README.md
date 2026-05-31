@@ -1,12 +1,14 @@
-# News Analyzer
+# News Analyzer Skill
 
-微信公众号新闻自动分析工具。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，排版后保存为微信公众号草稿，由用户自行审核发布。
+微信公众号新闻分析 **Skill**（技能）。从订阅的公众号文章中提取新闻，通过 LLM 智能分类和筛选，生成行业日报，排版后保存为微信公众号草稿，由用户自行审核发布。
+
+> **什么是 Skill？** Skill 是一套指令集 + 脚本 + 配置，告诉 AI Agent 如何执行特定任务。Agent（如 Claude Code、Codex、Trae）读取 Skill 后按流程执行。本项目是 Skill，不是 Agent。
 
 基于 [wechat-article-exporter](https://github.com/wechat-article/wechat-article-exporter) 提供微信文章数据接口。
 
 ## 完整工作流
 
-本工具覆盖从分析到保存草稿的完整流程，最终由用户自行审核发布：
+本 Skill 覆盖从分析到保存草稿的完整流程，最终由用户自行审核发布：
 
 ```
 获取文章 → LLM 分析 → 生成日报 → 花生编辑器排版 → 微信公众号保存为草稿 → 用户审核发布
@@ -25,7 +27,7 @@
 ### 必需
 
 - **Node.js** — 运行 wechat-article-exporter 和分析脚本
-- **AI Agent** — 支持 Claude Code、Codex、Gemini、Trae、Cline 等任意 Agent
+- **AI Agent** — 执行本 Skill 的 Agent，支持 Claude Code、Codex、Gemini、Trae、Cline 等
 - **Chrome DevTools MCP** — Agent 操作浏览器的工具（排版和保存草稿阶段必须，仅方式一需要）
 - **微信公众号** — 需要管理员权限，用于扫码登录和保存草稿
 
@@ -37,7 +39,7 @@
 
 ### 方式一：Agent 端到端执行（零配置，推荐）
 
-对 Agent 说 **"分析新闻"** 或 **"发日报"**，Agent 自动完成从生成到保存草稿的全部操作，最终由用户审核发布。
+对 Agent 说 **"分析新闻"** 或 **"发日报"**，Agent 读取本 Skill 后自动完成从生成到保存草稿的全部操作，最终由用户审核发布。
 
 - 调用 exporter API 获取文章
 - 利用自身 LLM 能力完成分析（无需额外 API Key）
@@ -115,7 +117,7 @@ npx nuxt dev --port 3200
 
 **方式一**：对 Agent 说 **"分析新闻"**
 
-Agent 将自动执行：生成日报 → 花生编辑器排版 → 微信公众号保存为草稿 → 用户审核发布
+Agent 读取本 Skill 后将自动执行：生成日报 → 花生编辑器排版 → 微信公众号保存为草稿 → 用户审核发布
 
 **方式二**：
 ```bash
@@ -156,7 +158,7 @@ INDUSTRY_CATEGORIES=融资与投资:融资、投资等,光伏:光伏技术、项
 ## 项目结构
 
 ```
-├── AGENTS.md                    # Agent 工作流配置（通用，所有 Agent 读取）
+├── AGENTS.md                    # Skill 工作流定义（通用，所有 Agent 读取）
 ├── CLAUDE.md                    # Claude Code 专用入口（引用 AGENTS.md）
 ├── wechat-article-exporter/     # 微信文章导出器（Nuxt.js，端口 3200）
 ├── wechat-article-skill/        # 分析脚本

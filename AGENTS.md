@@ -1,6 +1,8 @@
-# Agent 工作流配置
+# Skill 工作流定义
 
-本文件是 AI Agent 执行任务时的操作指引。项目介绍和配置说明见 [README.md](README.md)。
+本文件定义了 News Analyzer Skill 的完整工作流，供 AI Agent 读取和执行。
+
+> **Skill vs Agent**：本项目是 Skill（技能），不是 Agent。Skill 是指令集 + 脚本 + 配置，Agent（如 Claude Code、Codex、Trae）读取 Skill 后按流程执行。
 
 ## 触发方式
 
