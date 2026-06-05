@@ -102,108 +102,93 @@ async function deduplicateNewsWithLLM(newsList, llmConfig) {
 
   console.log(`  🤖 使用LLM去重...`);
 
-  try {
-    const newsText = newsList.map((n, i) => {
-      return `${i + 1}. [${n.industry_type}] ${n.title}\n    来源: ${n.account}\n    内容: ${n.summary.substring(0, 200)}...`;
-    }).join('\n\n');
-
-    const prompt = `分析以下${newsList.length}条新闻，严格识别重复新闻。
-
-新闻列表：
-${newsText}
-
-判断标准：
-1. 同一事件的不同报道 = 重复
-2. 同一公司同一动作 = 重复
-3. 同一产品/项目的报道 = 重复
-4. 相似但不完全相同的不算重复
-
-返回JSON格式（只返回JSON）：
-\`\`\`json
-{
-  "duplicate_groups": [
-    {
-      "indices": [1, 3, 5],
-      "keep": 1
-    }
-  ]
-}
-\`\`\`
-若无重复返回{"duplicate_groups":[]}。`;
-
-    const result = await callOpenAI(
-      prompt,
-      llmConfig.apiKey,
-      llmConfig.model,
-      llmConfig.baseUrl,
-      llmConfig.provider
-    );
-
-    const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
-                    result.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      return newsList.map(n => ({ ...n, sources: [n.account] }));
-    }
-
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
-
-    if (!parsed.duplicate_groups || !Array.isArray(parsed.duplicate_groups)) {
-      return newsList.map(n => ({ ...n, sources: [n.account] }));
-    }
-
-    const duplicateMap = new Map();
-    parsed.duplicate_groups.forEach(group => {
-      const keepIdx = group.keep - 1;
-      const indices = group.indices.map(i => i - 1);
-      indices.forEach(idx => {
-        if (idx !== keepIdx) {
-          duplicateMap.set(idx, keepIdx);
-        }
-      });
-      console.log(`    - 识别重复: [${indices.map(x => x + 1).join(', ')}] 归并保留 ${keepIdx + 1}`);
-    });
-
-    const deduplicated = [];
-    const sourcesMap = new Map();
-
-    newsList.forEach((n, i) => {
-      sourcesMap.set(i, [n.account]);
-    });
-
-    duplicateMap.forEach((targetIdx, sourceIdx) => {
-      const sourceAccounts = sourcesMap.get(sourceIdx) || [];
-      const targetAccounts = sourcesMap.get(targetIdx) || [];
-      const merged = new Set([...sourceAccounts, ...targetAccounts]);
-      sourcesMap.set(targetIdx, Array.from(merged));
-    });
-
-    const allIndices = new Set([...Array(newsList.length).keys()]);
-    const duplicateIndices = new Set(duplicateMap.keys());
-
-    allIndices.forEach(idx => {
-      if (!duplicateIndices.has(idx)) {
-        const news = {
-          ...newsList[idx],
-          sources: sourcesMap.get(idx) || [newsList[idx].account]
-        };
-        if (news.sources.length > 1) {
-          news.summary = `${news.summary} [来源: ${news.sources.join(', ')}]`;
-        }
-        deduplicated.push(news);
-      }
-    });
-
-    const removedCount = newsList.length - deduplicated.length;
-    console.log(`  ✓ 去重完成: 剔除 ${removedCount} 条，保留 ${deduplicated.length} 条`);
-
-    return deduplicated;
-
-  } catch (error) {
-    console.error(`  ❌ LLM去重失败: ${error.message}`);
-    return newsList.map(n => ({ ...n, sources: [n.account] }));
-  }
+  // [已禁用外部API] 原LLM去重逻辑已注释，改由AI Agent直接分析
+  // try {
+  //   const newsText = newsList.map((n, i) => {
+  //     return `${i + 1}. [${n.industry_type}] ${n.title}\n    来源: ${n.account}\n    内容: ${n.summary.substring(0, 200)}...`;
+  //   }).join('\n\n');
+  //   const prompt = `分析以下${newsList.length}条新闻，严格识别重复新闻。
+// 新闻列表：
+// ${newsText}
+// 判断标准：
+// 1. 同一事件的不同报道 = 重复
+// 2. 同一公司同一动作 = 重复
+// 3. 同一产品/项目的报道 = 重复
+// 4. 相似但不完全相同的不算重复
+// 返回JSON格式（只返回JSON）：
+// \`\`\`json
+// {
+//   "duplicate_groups": [
+//     {
+//       "indices": [1, 3, 5],
+//       "keep": 1
+//     }
+//   ]
+// }
+// \`\`\`
+// 若无重复返回{"duplicate_groups":[]}。`;
+  //   const result = await callOpenAI(
+  //     prompt,
+  //     llmConfig.apiKey,
+  //     llmConfig.model,
+  //     llmConfig.baseUrl,
+  //     llmConfig.provider
+  //   );
+  //   const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
+  //                   result.match(/\{[\s\S]*\}/);
+  //   if (!jsonMatch) {
+  //     return newsList.map(n => ({ ...n, sources: [n.account] }));
+  //   }
+  //   const jsonStr = jsonMatch[1] || jsonMatch[0];
+  //   const parsed = JSON.parse(jsonStr);
+  //   if (!parsed.duplicate_groups || !Array.isArray(parsed.duplicate_groups)) {
+  //     return newsList.map(n => ({ ...n, sources: [n.account] }));
+  //   }
+  //   const duplicateMap = new Map();
+  //   parsed.duplicate_groups.forEach(group => {
+  //     const keepIdx = group.keep - 1;
+  //     const indices = group.indices.map(i => i - 1);
+  //     indices.forEach(idx => {
+  //       if (idx !== keepIdx) {
+  //         duplicateMap.set(idx, keepIdx);
+  //       }
+  //     });
+  //     console.log(`    - 识别重复: [${indices.map(x => x + 1).join(', ')}] 归并保留 ${keepIdx + 1}`);
+  //   });
+  //   const deduplicated = [];
+  //   const sourcesMap = new Map();
+  //   newsList.forEach((n, i) => {
+  //     sourcesMap.set(i, [n.account]);
+  //   });
+  //   duplicateMap.forEach((targetIdx, sourceIdx) => {
+  //     const sourceAccounts = sourcesMap.get(sourceIdx) || [];
+  //     const targetAccounts = sourcesMap.get(targetIdx) || [];
+  //     const merged = new Set([...sourceAccounts, ...targetAccounts]);
+  //     sourcesMap.set(targetIdx, Array.from(merged));
+  //   });
+  //   const allIndices = new Set([...Array(newsList.length).keys()]);
+  //   const duplicateIndices = new Set(duplicateMap.keys());
+  //   allIndices.forEach(idx => {
+  //     if (!duplicateIndices.has(idx)) {
+  //       const news = {
+  //         ...newsList[idx],
+  //         sources: sourcesMap.get(idx) || [newsList[idx].account]
+  //       };
+  //       if (news.sources.length > 1) {
+  //         news.summary = `${news.summary} [来源: ${news.sources.join(', ')}]`;
+  //       }
+  //       deduplicated.push(news);
+  //     }
+  //   });
+  //   const removedCount = newsList.length - deduplicated.length;
+  //   console.log(`  ✓ 去重完成: 剔除 ${removedCount} 条，保留 ${deduplicated.length} 条`);
+  //   return deduplicated;
+  // } catch (error) {
+  //   console.error(`  ❌ LLM去重失败: ${error.message}`);
+  //   return newsList.map(n => ({ ...n, sources: [n.account] }));
+  // }
+  console.log('  ⚠ 外部LLM API已禁用，去重由AI Agent完成');
+  return newsList.map(n => ({ ...n, sources: [n.account] }));
 }
 
 async function processSingleArticle(article, index, total) {
@@ -218,35 +203,37 @@ async function processSingleArticle(article, index, total) {
       return [];
     }
 
-    if (USE_LLM && llmConfig) {
-      console.log('   正在使用LLM分析...');
-      const analysisConfig = {
-        ...llmConfig,
-        industryName: industryConfig.name,
-        industryKeywords: industryConfig.keywords,
-        industryCategories: industryConfig.categories
-      };
-      const analysisResult = await analyzeArticleWithLLM(article.title, content, analysisConfig);
-
-      if (analysisResult.has_news && Array.isArray(analysisResult.news_list)) {
-        const newsList = analysisResult.news_list.map(news => ({
-          title: news.title,
-          summary: news.summary,
-          industry_type: news.industry_type,
-          news_type: news.news_type,
-          link: article.link,
-          account: article.account,
-          createTime: article.createTime
-        }));
-        console.log(`   ✓ 提取到 ${newsList.length} 条新闻`);
-        return newsList;
-      } else {
-        return [];
-      }
-    } else {
-      console.log('   ✗ 未配置LLM');
-      return [];
-    }
+    // [已禁用外部API] 原LLM分析逻辑已注释，改由AI Agent直接分析
+    // if (USE_LLM && llmConfig) {
+    //   console.log('   正在使用LLM分析...');
+    //   const analysisConfig = {
+    //     ...llmConfig,
+    //     industryName: industryConfig.name,
+    //     industryKeywords: industryConfig.keywords,
+    //     industryCategories: industryConfig.categories
+    //   };
+    //   const analysisResult = await analyzeArticleWithLLM(article.title, content, analysisConfig);
+    //   if (analysisResult.has_news && Array.isArray(analysisResult.news_list)) {
+    //     const newsList = analysisResult.news_list.map(news => ({
+    //       title: news.title,
+    //       summary: news.summary,
+    //       industry_type: news.industry_type,
+    //       news_type: news.news_type,
+    //       link: article.link,
+    //       account: article.account,
+    //       createTime: article.createTime
+    //     }));
+    //     console.log(`   ✓ 提取到 ${newsList.length} 条新闻`);
+    //     return newsList;
+    //   } else {
+    //     return [];
+    //   }
+    // } else {
+    //   console.log('   ✗ 未配置LLM');
+    //   return [];
+    // }
+    console.log('   ⚠ 外部LLM API已禁用，请使用 collect-articles.js + AI Agent 方式');
+    return [];
   } catch (error) {
     console.error(`   ✗ 处理失败: ${error.message}`);
     return [];
@@ -267,7 +254,7 @@ async function selectTopNews(allNews, llmConfig) {
     `${i + 1}. ${n.title}\n   ${n.summary.substring(0, 150)}...`
   ).join('\n\n');
 
-  const prompt = `分析以下${allNews.length}条新闻，选出**最多3条**对行业最重要、最有价值的新闻。
+  const prompt = `分析以下${allNews.length}条新闻，选出**最多3条**对行业最重要、最有价值、最适合放在微信公众号首屏后的新闻。
 
 判断标准（从多维度综合考量，不是按金额大小）：
 1. 行业影响：这件事会不会改变行业格局/趋势？
@@ -275,11 +262,19 @@ async function selectTopNews(allNews, llmConfig) {
 3. 战略意义：对产业链上下游有什么影响？
 4. 趋势信号：反映了什么重要的行业变化？
 5. 影响范围：影响的是特定公司还是整个行业？
+6. 读者相关性：数据中心、算力、AI从业者打开后能不能立刻知道"这和我有什么关系"？
 
 不要只看融资额大小。例如：
 - 一家小公司突破某技术瓶颈，可能比大额融资更重要
 - 某政策变化，可能影响整个行业
 - 某危机事件，可能揭示行业风险
+
+写作要求：
+- 先提出候选核心观点，再对每个候选观点逐条网络搜索验证；不得只凭模型记忆直接下结论。
+- 必须验证标题前半句、今日判断、为什么重要、这意味着、受益方/承压方、后续观察。
+- 每个核心观点至少有1个可靠来源支撑；融资金额、政策、订单、投产、芯片/AI模型、公司战略等高时效内容优先用2个来源交叉确认。
+- 判断要克制，避免标题党式夸张；如果只能找到二手消息，语气要降级；无法验证或来源冲突的观点要删除。
+- 每条重点新闻必须回答：谁受益、谁承压、下一步看什么。
 
 新闻列表：
 ${newsSummaries}
@@ -291,57 +286,56 @@ ${newsSummaries}
     {
       "index": 1,
       "reason": "简述为什么这条新闻重要（1-2句话）",
-      "insight": "这条新闻意味着什么（1-2句话，给从业者什么启示）"
+      "insight": "这条新闻意味着什么（1-2句话，给从业者什么启示）",
+      "beneficiary": "可能受益的公司/环节/岗位，不确定则写待验证",
+      "pressure": "可能承压的公司/环节/岗位，不明显则写暂不明显",
+      "watch": "后续观察节点，例如签约、采购、投产、监管审批、财报披露"
     }
   ]
 }
 \`\`\`
 index使用上述列表的实际编号（1到${allNews.length}）。`;
 
-  try {
-    const result = await callOpenAI(
-      prompt,
-      llmConfig.apiKey,
-      llmConfig.model,
-      llmConfig.baseUrl,
-      llmConfig.provider
-    );
-
-    const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
-                      result.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      console.log('   ⚠ 无法解析AI返回结果');
-      return [];
-    }
-
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
-
-    if (!parsed.top_news || !Array.isArray(parsed.top_news)) {
-      console.log('   ✓ 未发现特别重要的新闻');
-      return [];
-    }
-
-    const topNewsList = [];
-    parsed.top_news.forEach(item => {
-      const idx = item.index - 1;
-      if (idx >= 0 && idx < allNews.length) {
-        topNewsList.push({
-          news: allNews[idx],
-          reason: item.reason,
-          insight: item.insight
-        });
-      }
-    });
-
-    console.log(`   ✓ 筛选出 ${topNewsList.length} 条重点新闻`);
-    return topNewsList;
-
-  } catch (error) {
-    console.error(`   ❌ 筛选失败: ${error.message}`);
-    return [];
-  }
+  // [已禁用外部API] 原LLM筛选重点新闻逻辑已注释，改由AI Agent直接分析
+  // try {
+  //   const result = await callOpenAI(
+  //     prompt,
+  //     llmConfig.apiKey,
+  //     llmConfig.model,
+  //     llmConfig.baseUrl,
+  //     llmConfig.provider
+  //   );
+  //   const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
+  //                     result.match(/\{[\s\S]*\}/);
+  //   if (!jsonMatch) {
+  //     console.log('   ⚠ 无法解析AI返回结果');
+  //     return [];
+  //   }
+  //   const jsonStr = jsonMatch[1] || jsonMatch[0];
+  //   const parsed = JSON.parse(jsonStr);
+  //   if (!parsed.top_news || !Array.isArray(parsed.top_news)) {
+  //     console.log('   ✓ 未发现特别重要的新闻');
+  //     return [];
+  //   }
+  //   const topNewsList = [];
+  //   parsed.top_news.forEach(item => {
+  //     const idx = item.index - 1;
+  //     if (idx >= 0 && idx < allNews.length) {
+  //       topNewsList.push({
+  //         news: allNews[idx],
+  //         reason: item.reason,
+  //         insight: item.insight
+  //       });
+  //     }
+  //   });
+  //   console.log(`   ✓ 筛选出 ${topNewsList.length} 条重点新闻`);
+  //   return topNewsList;
+  // } catch (error) {
+  //   console.error(`   ❌ 筛选失败: ${error.message}`);
+  //   return [];
+  // }
+  console.log('   ⚠ 外部LLM API已禁用，重点筛选由AI Agent完成');
+  return [];
 }
 
 /**
@@ -378,61 +372,53 @@ ${industryConfig.categories.map(c => `    "${c.name}": []`).join(',\n')}
 \`\`\`
 index使用上述列表的实际编号（1到${allNews.length}）。每条新闻只能属于一个类别。`;
 
-  try {
-    const result = await callOpenAI(
-      prompt,
-      llmConfig.apiKey,
-      llmConfig.model,
-      llmConfig.baseUrl,
-      llmConfig.provider
-    );
-
-    const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
-                      result.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      console.log('   ⚠ 无法解析AI返回结果，归入"其他"');
-      return { '其他': allNews };
-    }
-
-    const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
-
-    if (!parsed.categories || typeof parsed.categories !== 'object') {
-      return { '其他': allNews };
-    }
-
-    const categorized = {};
-    const emojiMap = {};
-    for (const cat of industryConfig.categories) {
-      emojiMap[cat.name] = cat.emoji;
-    }
-
-    for (const [category, indices] of Object.entries(parsed.categories)) {
-      if (Array.isArray(indices) && indices.length > 0) {
-        const key = emojiMap[category] ? category : '其他';
-        categorized[key] = indices.map(idx => allNews[idx - 1]).filter(n => n);
-      }
-    }
-
-    const categorizedNews = new Set();
-    Object.values(categorized).forEach(list => list.forEach(n => categorizedNews.add(n)));
-
-    if (categorizedNews.size < allNews.length) {
-      const uncategorized = allNews.filter(n => !categorizedNews.has(n));
-      if (!categorized['其他']) categorized['其他'] = [];
-      categorized['其他'].push(...uncategorized);
-    }
-
-    const totalCount = Object.values(categorized).reduce((sum, list) => sum + list.length, 0);
-    console.log(`   ✓ 分类完成: ${totalCount} 条`);
-
-    return categorized;
-
-  } catch (error) {
-    console.error(`   ❌ 分类失败: ${error.message}`);
-    return { '其他': allNews };
-  }
+  // [已禁用外部API] 原LLM分类逻辑已注释，改由AI Agent直接分析
+  // try {
+  //   const result = await callOpenAI(
+  //     prompt,
+  //     llmConfig.apiKey,
+  //     llmConfig.model,
+  //     llmConfig.baseUrl,
+  //     llmConfig.provider
+  //   );
+  //   const jsonMatch = result.match(/```json\s*([\s\S]*?)\s*```\s*/) ||
+  //                     result.match(/\{[\s\S]*\}/);
+  //   if (!jsonMatch) {
+  //     console.log('   ⚠ 无法解析AI返回结果，归入"其他"');
+  //     return { '其他': allNews };
+  //   }
+  //   const jsonStr = jsonMatch[1] || jsonMatch[0];
+  //   const parsed = JSON.parse(jsonStr);
+  //   if (!parsed.categories || typeof parsed.categories !== 'object') {
+  //     return { '其他': allNews };
+  //   }
+  //   const categorized = {};
+  //   const emojiMap = {};
+  //   for (const cat of industryConfig.categories) {
+  //     emojiMap[cat.name] = cat.emoji;
+  //   }
+  //   for (const [category, indices] of Object.entries(parsed.categories)) {
+  //     if (Array.isArray(indices) && indices.length > 0) {
+  //       const key = emojiMap[category] ? category : '其他';
+  //       categorized[key] = indices.map(idx => allNews[idx - 1]).filter(n => n);
+  //     }
+  //   }
+  //   const categorizedNews = new Set();
+  //   Object.values(categorized).forEach(list => list.forEach(n => categorizedNews.add(n)));
+  //   if (categorizedNews.size < allNews.length) {
+  //     const uncategorized = allNews.filter(n => !categorizedNews.has(n));
+  //     if (!categorized['其他']) categorized['其他'] = [];
+  //     categorized['其他'].push(...uncategorized);
+  //   }
+  //   const totalCount = Object.values(categorized).reduce((sum, list) => sum + list.length, 0);
+  //   console.log(`   ✓ 分类完成: ${totalCount} 条`);
+  //   return categorized;
+  // } catch (error) {
+  //   console.error(`   ❌ 分类失败: ${error.message}`);
+  //   return { '其他': allNews };
+  // }
+  console.log('   ⚠ 外部LLM API已禁用，分类由AI Agent完成');
+  return { '其他': allNews };
 }
 
 /**
@@ -441,12 +427,26 @@ index使用上述列表的实际编号（1到${allNews.length}）。每条新闻
 async function generateMarkdownReport(startDate, endDate, allNews, topNewsList, categorizedNews) {
   const today = new Date();
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const shortDate = `${today.getMonth() + 1}.${today.getDate()}`;
 
-  let report = `# ${industryConfig.name}动态日报 | ${dateStr}\n\n`;
+  const topHeadlines = topNewsList.slice(0, 2).map(item => item.news.title.substring(0, 20)).join('，');
+  let report = `# ${topHeadlines}｜${shortDate}算力日报\n\n`;
 
-  // 今日重点
+  const judgmentLead = topNewsList.length > 0
+    ? `今天的核心变化是：${topNewsList[0].insight || topNewsList[0].reason || topNewsList[0].news.title}`
+    : `今天该时间段缺少足够强的新动态，重点看后续是否出现订单、投产、监管或财报披露。`;
+
+  report += `## 今日判断\n\n`;
+  report += `一句话：${judgmentLead}\n\n`;
+  topNewsList.slice(0, 3).forEach(item => {
+    report += `- ${item.reason || item.news.title}\n`;
+  });
+  report += `\n`;
+
+  report += `---\n\n`;
+
   if (topNewsList.length > 0) {
-    report += `## 🔥 今日重点（AI筛选）\n\n`;
+    report += `## 🔥 今日重点\n\n`;
     topNewsList.forEach((item, idx) => {
       const news = item.news;
       report += `### ${idx + 1}. ${news.title}\n\n`;
@@ -456,37 +456,43 @@ async function generateMarkdownReport(startDate, endDate, allNews, topNewsList, 
       report += `${news.summary}\n\n`;
       report += `**为什么重要**：${item.reason}\n\n`;
       report += `**这意味着**：${item.insight}\n\n`;
+      report += `**受益方**：${item.beneficiary || '待验证'}\n\n`;
+      report += `**承压方**：${item.pressure || '暂不明显'}\n\n`;
+      report += `**后续观察**：${item.watch || '关注后续订单、采购、投产或监管披露'}\n\n`;
+      report += `---\n\n`;
     });
-    report += `---\n\n`;
   }
 
-  // 各分类新闻
+  report += `## ⚡ 一分钟速览\n\n`;
+
   const categories = industryConfig.categories.map(c => ({
     key: `${c.emoji} ${c.name}`,
     name: c.name
   }));
 
+  const topNewsTitles = new Set(topNewsList.map(n => n.news.title));
+
   for (const cat of categories) {
     const news = categorizedNews[cat.name];
     if (news && news.length > 0) {
-      report += `## ${cat.key}\n\n`;
-
-      // 今日重点中的新闻不重复显示
-      const topNewsTitles = new Set(topNewsList.map(n => n.news.title));
+      report += `### ${cat.key}\n\n`;
+      report += `| 动态概要 | 影响度 | 原文链接 |\n`;
+      report += `|---------|-------|---------|\n`;
 
       for (const item of news) {
         if (topNewsTitles.has(item.title)) {
           continue;
         }
-
-        report += `### ${item.title}\n\n`;
-        if (item.link) {
-          report += `[原文链接](${item.link})\n\n`;
-        }
-        report += `${item.summary}\n\n`;
+        const summary = item.title.length > 30 ? item.title.substring(0, 30) + '...' : item.title;
+        const stars = item.impact_stars || '⭐⭐⭐';
+        const link = item.link ? `[链接](${item.link})` : '-';
+        report += `| ${summary} | ${stars} | ${link} |\n`;
       }
+      report += `\n`;
     }
   }
+
+  report += `> 💡 **每天早上，我们为你过滤99%的行业噪音，只提炼对数据中心、云计算和AI决策最关键的3条深剖与速览。点击上方蓝字关注我们，比竞对更快一步看懂产业变局。**\n\n`;
 
   return report;
 }
