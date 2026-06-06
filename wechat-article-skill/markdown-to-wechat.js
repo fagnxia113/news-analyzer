@@ -321,21 +321,25 @@ function generateWechatHTML(sections, linkWhitelist = null) {
 
 const args = process.argv.slice(2);
 if (args.length < 1) {
-  console.log('用法: node markdown-to-wechat.js <markdown文件路径> [输出路径] [--whitelist <collected-articles.json>]');
+  console.log('用法: node markdown-to-wechat.js <markdown文件路径> [输出路径] [--whitelist <file>] [--strict-links]');
   console.log('');
   console.log('选项:');
-  console.log('  --whitelist <file>  从指定的 collected-articles.json 加载链接白名单');
-  console.log('                      白名单外的链接（AI幻觉/失效）会自动转成纯文字');
-  console.log('                      这可以避免微信编辑器因"不合法链接"拒绝保存草稿');
+  console.log('  --whitelist <file>    从指定的 collected-articles.json 加载链接白名单');
+  console.log('                        白名单外的链接（AI幻觉/失效）会自动转成纯文字');
+  console.log('  --strict-links        自动查找同目录下的 collected-articles-*.json 作为白名单');
+  console.log('                        不需要手动指定文件路径，适合标准工作流');
   process.exit(1);
 }
 
 const inputPath = args[0];
 let outputPath = null;
 let whitelistPath = null;
+let strictLinks = false;
 for (let i = 1; i < args.length; i++) {
   if (args[i] === '--whitelist' && i + 1 < args.length) {
     whitelistPath = args[++i];
+  } else if (args[i] === '--strict-links') {
+    strictLinks = true;
   } else if (!outputPath) {
     outputPath = args[i];
   }
@@ -345,6 +349,20 @@ outputPath = outputPath || inputPath.replace(/\.md$/, '.wechat.html');
 if (!fs.existsSync(inputPath)) {
   console.error(`文件不存在: ${inputPath}`);
   process.exit(1);
+}
+
+// --strict-links: 自动查找 collected-articles-*.json
+if (strictLinks && !whitelistPath) {
+  const outputDir = path.dirname(inputPath);
+  const collectedFiles = fs.readdirSync(outputDir)
+    .filter(f => f.match(/^collected-articles-.*\.json$/))
+    .sort();
+  if (collectedFiles.length > 0) {
+    whitelistPath = path.join(outputDir, collectedFiles[collectedFiles.length - 1]);
+    console.log(`--strict-links: 自动使用 ${collectedFiles[collectedFiles.length - 1]}`);
+  } else {
+    console.log('--strict-links: 未找到 collected-articles-*.json，所有链接将保留');
+  }
 }
 
 let linkWhitelist = null;

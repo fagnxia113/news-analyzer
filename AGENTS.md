@@ -115,6 +115,13 @@ AI Agent 读取本文件后按流程执行新闻分析和发布任务。
 
 ## 关键技术细节
 
+### Skills 索引
+
+| Skill 名称 | 用途 | 调用时机 |
+|-----------|------|---------|
+| `wechat-editor` | 控制微信公众号后台编辑器（Chrome DevTools MCP） | 编辑/排版/保存草稿时 |
+| `link-validator` | 审计日报链接合法性，识别 AI 幻觉链接 | 保存草稿出现"不合法链接"错误时 |
+
 ### Auth Key 管理
 - 存储在 `wechat-article-skill/.env` 文件的 `AUTH_KEY` 变量中
 - 有效期4天，通常不需要每次重新获取

@@ -15,6 +15,14 @@ This skill provides precise control over the WeChat Official Account (公众号)
 - User wants to save draft in WeChat backend
 - Any operation involving WeChat Official Account backend editor
 
+## ⚠️ 关键操作顺序（必须遵守！）
+
+> **以下三条规则是操作微信编辑器的生命线，违反任何一条都会导致严重问题！**
+
+1. **必须先设置正文，再设置标题！** 如果先设置标题再设置正文，标题会被正文内容覆盖，导致标题丢失。
+2. **必须用 `querySelectorAll('.ProseMirror')[1]` 选择正文编辑器！** 绝不能用 `querySelector('.ProseMirror')`，它返回的是标题编辑器（第一个 `.ProseMirror`），会导致内容粘贴到标题栏。
+3. **绝不能用 Ctrl+A 全选！** 微信编辑器中 Ctrl+A 会同时选中标题和正文，粘贴时内容会错位到标题栏。
+
 ## Editor Structure
 
 The WeChat backend editor uses **ProseMirror** rich text editor framework. Key elements:
@@ -484,6 +492,23 @@ async () => {
 **Cause**: The Clipboard API requires a secure context (HTTPS or localhost) and user interaction.
 
 **Solution**: Ensure you're on the HTTP localhost page when writing to clipboard, and on the HTTPS WeChat page when reading from clipboard. Both contexts support the Clipboard API.
+
+### Problem: Chrome DevTools MCP 不可用
+
+**Cause**: Agent 运行环境不支持 Chrome DevTools MCP 工具（如 `evaluate_script`、`take_snapshot`、`click` 等不可用），无法通过脚本自动操作浏览器。
+
+**Solution**: Agent 应告知用户手动完成排版和保存草稿操作，提供以下手动步骤：
+
+1. 浏览器打开 `http://localhost:8766/daily.html`
+2. 按 Ctrl+A 选中页面全部内容
+3. 按 Ctrl+C 复制
+4. 切换到微信编辑器页面
+5. **鼠标点击正文区域**（确保光标在正文中，而非标题栏）
+6. 按 Ctrl+V 粘贴
+7. 手动设置标题（在标题栏输入）
+8. 点击"保存为草稿"
+
+**⚠️ 注意**：在微信编辑器中不要用 Ctrl+A 全选，否则会同时选中标题和正文，导致粘贴错位。如需清空正文再粘贴，用鼠标选中正文区域后删除即可。
 
 ## MCP Tool Usage
 
