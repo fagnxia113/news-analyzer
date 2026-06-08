@@ -4,8 +4,10 @@
  * 分析昨天7点至今天7点的新闻（简化版）
  *
  * 新版格式：
- * 1. 🔥 今日重点（AI筛选，最多3条）
- * 2. 分类新闻（融资、数据中心、技术、风险、其他）
+ * 1. 今日判断（一句话判断 + 3个变化信号）
+ * 2. 今天对谁有用
+ * 3. 🔥 今日主线（默认1条主线，串联2-3个证据）
+ * 4. ⚡ 一分钟速览（全篇最多6-8条）
  */
 
 import { request } from './auth-manager.js';
@@ -241,7 +243,7 @@ async function processSingleArticle(article, index, total) {
 }
 
 /**
- * 使用AI筛选今日重点新闻（最多3条）
+ * 使用AI筛选今日主线新闻（默认1条，最多2条）
  */
 async function selectTopNews(allNews, llmConfig) {
   if (!llmConfig || allNews.length === 0) {
@@ -254,15 +256,14 @@ async function selectTopNews(allNews, llmConfig) {
     `${i + 1}. ${n.title}\n   ${n.summary.substring(0, 150)}...`
   ).join('\n\n');
 
-  const prompt = `分析以下${allNews.length}条新闻，选出**最多3条**对行业最重要、最有价值、最适合放在微信公众号首屏后的新闻。
+  const prompt = `分析以下${allNews.length}条新闻，先提炼当天最适合公众号打开和转发的**一个主线**，再选择能支撑这条主线的新闻。默认只选1条主线，除非当天有互不相关的重大事件，才最多选2条。
 
 判断标准（从多维度综合考量，不是按金额大小）：
-1. 行业影响：这件事会不会改变行业格局/趋势？
-2. 里程碑事件：是不是"首次"、"突破"、"首个"这类里程碑？
-3. 战略意义：对产业链上下游有什么影响？
-4. 趋势信号：反映了什么重要的行业变化？
-5. 影响范围：影响的是特定公司还是整个行业？
-6. 读者相关性：数据中心、算力、AI从业者打开后能不能立刻知道"这和我有什么关系"？
+1. 打开理由：标题能否写成"变化/冲突/后果"，让非核心读者也想点开？
+2. 行业影响：这件事会不会改变数据中心、算力或AI基础设施的资源配置？
+3. 主线能力：能否串联2-3条新闻形成一个清晰故事，而不是孤立事件？
+4. 趋势信号：反映了什么正在发生的变化，例如拿电、融资、供配电、监管、芯片、客户需求？
+5. 读者相关性：数据中心运营商、设备商、投资人、园区/能源侧能不能立刻知道"我该看什么"？
 
 不要只看融资额大小。例如：
 - 一家小公司突破某技术瓶颈，可能比大额融资更重要
@@ -271,10 +272,11 @@ async function selectTopNews(allNews, llmConfig) {
 
 写作要求：
 - 先提出候选核心观点，再对每个候选观点逐条网络搜索验证；不得只凭模型记忆直接下结论。
-- 必须验证标题前半句、今日判断、为什么重要、这意味着、受益方/承压方、后续观察。
+- 必须验证标题前半句、今日判断、今日主线、为什么重要、谁该关注、下一步看什么。
 - 每个核心观点至少有1个可靠来源支撑；融资金额、政策、订单、投产、芯片/AI模型、公司战略等高时效内容优先用2个来源交叉确认。
 - 判断要克制，避免标题党式夸张；如果只能找到二手消息，语气要降级；无法验证或来源冲突的观点要删除。
-- 每条重点新闻必须回答：谁受益、谁承压、下一步看什么。
+- 每条主线必须回答：发生了什么、为什么重要、谁该关注、下一步看什么。
+- 弱新闻、展会稿、招聘稿、软文稿、重复转述默认删除；一分钟速览全篇最多6-8条。
 
 新闻列表：
 ${newsSummaries}
@@ -285,11 +287,11 @@ ${newsSummaries}
   "top_news": [
     {
       "index": 1,
-      "reason": "简述为什么这条新闻重要（1-2句话）",
-      "insight": "这条新闻意味着什么（1-2句话，给从业者什么启示）",
-      "beneficiary": "可能受益的公司/环节/岗位，不确定则写待验证",
-      "pressure": "可能承压的公司/环节/岗位，不明显则写暂不明显",
-      "watch": "后续观察节点，例如签约、采购、投产、监管审批、财报披露"
+      "mainline": "当天主线，用一句人话写清变化/冲突/后果",
+      "reason": "为什么重要（1-2句话）",
+      "insight": "这说明行业正在发生什么变化（1-2句话）",
+      "audience": "谁该关注：公司/环节/岗位/角色",
+      "watch": "下一步看什么，例如签约、并网、采购、投产、监管审批、财报披露"
     }
   ]
 }
@@ -323,8 +325,11 @@ index使用上述列表的实际编号（1到${allNews.length}）。`;
   //     if (idx >= 0 && idx < allNews.length) {
   //       topNewsList.push({
   //         news: allNews[idx],
+  //         mainline: item.mainline,
   //         reason: item.reason,
-  //         insight: item.insight
+  //         insight: item.insight,
+  //         audience: item.audience,
+  //         watch: item.watch
   //       });
   //     }
   //   });
@@ -422,43 +427,63 @@ index使用上述列表的实际编号（1到${allNews.length}）。每条新闻
 }
 
 /**
- * 生成Markdown报告（简化版）
+ * 生成Markdown报告（公众号增长版）
  */
 async function generateMarkdownReport(startDate, endDate, allNews, topNewsList, categorizedNews) {
   const today = new Date();
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const shortDate = `${today.getMonth() + 1}.${today.getDate()}`;
 
-  const topHeadlines = topNewsList.slice(0, 2).map(item => item.news.title.substring(0, 20)).join('，');
-  let report = `# ${topHeadlines}｜${shortDate}算力日报\n\n`;
+  const titleLead = topNewsList[0]?.mainline || topNewsList[0]?.insight || topNewsList[0]?.news.title || '今天算力产业最该看的变化';
+  const shortTitleLead = titleLead.length > 22 ? titleLead.substring(0, 22) : titleLead;
+  let report = `# ${shortTitleLead}｜${shortDate}数据中心、算力、AI日报\n\n`;
 
   const judgmentLead = topNewsList.length > 0
-    ? `今天的核心变化是：${topNewsList[0].insight || topNewsList[0].reason || topNewsList[0].news.title}`
+    ? `${topNewsList[0].mainline || topNewsList[0].insight || topNewsList[0].reason || topNewsList[0].news.title}`
     : `今天该时间段缺少足够强的新动态，重点看后续是否出现订单、投产、监管或财报披露。`;
 
   report += `## 今日判断\n\n`;
-  report += `一句话：${judgmentLead}\n\n`;
-  topNewsList.slice(0, 3).forEach(item => {
-    report += `- ${item.reason || item.news.title}\n`;
-  });
+  report += `**今天最重要的一句话**：${judgmentLead}\n\n`;
+  report += `**三个变化信号**：\n\n`;
+  if (topNewsList.length > 0) {
+    topNewsList.slice(0, 3).forEach(item => {
+      report += `- ${item.reason || item.news.title}\n`;
+    });
+  } else {
+    report += `- 该时间段没有足够强的新主线，宁可少写也不强行凑数。\n`;
+  }
+  report += `\n`;
+
+  report += `## 今天对谁有用\n\n`;
+  const audiences = topNewsList
+    .map(item => item.audience || item.beneficiary)
+    .filter(Boolean);
+  if (audiences.length > 0) {
+    audiences.slice(0, 4).forEach(audience => {
+      report += `- ${audience}\n`;
+    });
+  } else {
+    report += `- 数据中心运营商：重点看电力、客户和交付节奏。\n`;
+    report += `- 设备与工程厂商：重点看供配电、液冷、储能和网络侧新增需求。\n`;
+    report += `- 投资人与园区侧：重点看融资、政策、并网和长期订单。\n`;
+  }
   report += `\n`;
 
   report += `---\n\n`;
 
   if (topNewsList.length > 0) {
-    report += `## 🔥 今日重点\n\n`;
-    topNewsList.forEach((item, idx) => {
+    report += `## 🔥 今日主线\n\n`;
+    topNewsList.slice(0, 2).forEach((item, idx) => {
       const news = item.news;
       report += `### ${idx + 1}. ${news.title}\n\n`;
       if (news.link) {
         report += `[原文链接](${news.link})\n\n`;
       }
-      report += `${news.summary}\n\n`;
+      report += `**发生了什么**：${news.summary}\n\n`;
       report += `**为什么重要**：${item.reason}\n\n`;
-      report += `**这意味着**：${item.insight}\n\n`;
-      report += `**受益方**：${item.beneficiary || '待验证'}\n\n`;
-      report += `**承压方**：${item.pressure || '暂不明显'}\n\n`;
-      report += `**后续观察**：${item.watch || '关注后续订单、采购、投产或监管披露'}\n\n`;
+      report += `**行业变化**：${item.insight || '待验证'}\n\n`;
+      report += `**谁该关注**：${item.audience || item.beneficiary || '相关数据中心、算力、AI基础设施从业者'}\n\n`;
+      report += `**下一步看什么**：${item.watch || '关注后续订单、采购、投产、并网或监管披露'}\n\n`;
       report += `---\n\n`;
     });
   }
@@ -472,27 +497,38 @@ async function generateMarkdownReport(startDate, endDate, allNews, topNewsList, 
 
   const topNewsTitles = new Set(topNewsList.map(n => n.news.title));
 
+  let speedCount = 0;
+  const maxSpeedItems = 8;
+
   for (const cat of categories) {
+    if (speedCount >= maxSpeedItems) break;
     const news = categorizedNews[cat.name];
     if (news && news.length > 0) {
-      report += `### ${cat.key}\n\n`;
-      report += `| 动态概要 | 影响度 | 原文链接 |\n`;
-      report += `|---------|-------|---------|\n`;
+      const rows = [];
 
       for (const item of news) {
+        if (speedCount >= maxSpeedItems) break;
         if (topNewsTitles.has(item.title)) {
           continue;
         }
         const summary = item.title.length > 30 ? item.title.substring(0, 30) + '...' : item.title;
         const stars = item.impact_stars || '⭐⭐⭐';
         const link = item.link ? `[链接](${item.link})` : '-';
-        report += `| ${summary} | ${stars} | ${link} |\n`;
+        rows.push(`| ${summary} | ${stars} | ${link} |`);
+        speedCount++;
       }
-      report += `\n`;
+
+      if (rows.length > 0) {
+        report += `### ${cat.key}\n\n`;
+        report += `| 动态概要 | 影响度 | 原文链接 |\n`;
+        report += `|---------|-------|---------|\n`;
+        report += rows.join('\n') + '\n';
+        report += `\n`;
+      }
     }
   }
 
-  report += `> 💡 **每天早上，我们为你过滤99%的行业噪音，只提炼对数据中心、云计算和AI决策最关键的3条深剖与速览。点击上方蓝字关注我们，比竞对更快一步看懂产业变局。**\n\n`;
+  report += `> **关注我们**：持续追踪算力、数据中心与AI基础设施的资金、电力、技术和政策信号，帮你从密集信息里抓住真正值得行动的产业变化。\n\n`;
 
   return report;
 }

@@ -24,6 +24,9 @@ function parseMarkdownSections(markdown) {
       thesis: '',
       bullets: []
     },
+    audience: {
+      bullets: []
+    },
     topNews: [],
     quickScan: {}
   };
@@ -50,7 +53,12 @@ function parseMarkdownSections(markdown) {
       continue;
     }
 
-    if (line.startsWith('## 🔥 今日重点') || line.startsWith('## 今日重点')) {
+    if (line.startsWith('## 今天对谁有用')) {
+      currentSection = 'audience';
+      continue;
+    }
+
+    if (line.startsWith('## 🔥 今日重点') || line.startsWith('## 今日重点') || line.startsWith('## 🔥 今日主线') || line.startsWith('## 今日主线')) {
       currentSection = 'topNews';
       continue;
     }
@@ -77,46 +85,96 @@ function parseMarkdownSections(markdown) {
       continue;
     }
 
+    if (currentSection === 'audience') {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('---')) continue;
+
+      const cleanLine = convertBold(trimmed.replace(/^[-*]\s*/, '').trim());
+      if (!cleanLine) continue;
+
+      if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+        sections.audience.bullets.push(cleanLine);
+      }
+      continue;
+    }
+
     if (currentSection === 'topNews') {
       if (line.startsWith('### ')) {
         if (currentTopNews) sections.topNews.push(currentTopNews);
         currentTopNews = {
           title: line.replace('### ', '').replace(/^\d+\.\s*/, '').trim(),
-          link: '', summary: '', reason: '', insight: '', beneficiary: '', pressure: '', watch: ''
+          link: '', links: [], summary: '', reason: '', insight: '', beneficiary: '', pressure: '', watch: '',
+          _pendingField: null
         };
         continue;
       }
 
       if (!currentTopNews) continue;
 
-      const linkMatch = line.match(/\[原文链接\]\(([^)]+)\)/);
+      // 支持多个原文链接（用 | 分隔），兼容 [原文链接] 和 [链接] 两种写法
+      const linkMatch = line.match(/\[(?:原文链接|链接)\]\(([^)]+)\)/g);
       if (linkMatch) {
-        currentTopNews.link = linkMatch[1];
+        linkMatch.forEach(m => {
+          const url = m.match(/\[(?:原文链接|链接)\]\(([^)]+)\)/);
+          if (url) {
+            if (!currentTopNews.link) currentTopNews.link = url[1];
+            currentTopNews.links.push(url[1]);
+          }
+        });
         continue;
       }
 
-      if (line.startsWith('**为什么重要')) {
-        currentTopNews.reason = line.replace(/\*\*为什么重要[：:]*\*\*[：:]*\s*/, '').trim();
+      // 兼容"标题和内容在同一行"与"标题独占一行"两种写法
+      // 如果当前行是 **xxx** 格式的字段标题（独占一行，后面没有内容）
+      // 则记录 _pendingField，等下一行内容到来时再赋值
+      const fieldPatterns = [
+        { prefix: '**发生了什么', field: 'summary', isSummary: true },
+        { prefix: '**为什么重要', field: 'reason' },
+        { prefix: '**这意味着', field: 'insight' },
+        { prefix: '**受益方', field: 'beneficiary' },
+        { prefix: '**谁该关注', field: 'beneficiary' },
+        { prefix: '**承压方', field: 'pressure' },
+        { prefix: '**后续观察', field: 'watch' },
+        { prefix: '**下一步看什么', field: 'watch' },
+      ];
+
+      let matchedField = null;
+      for (const fp of fieldPatterns) {
+        if (line.startsWith(fp.prefix)) {
+          matchedField = fp;
+          break;
+        }
+      }
+
+      if (matchedField) {
+        const text = line.replace(/\*\*[^*]+\*\*[：:]*\s*/, '').trim();
+        if (text) {
+          // 标题和内容在同一行
+          if (matchedField.isSummary) {
+            currentTopNews.summary += (currentTopNews.summary ? '<br><br>' : '') + convertBold(text);
+          } else {
+            currentTopNews[matchedField.field] = text;
+          }
+          currentTopNews._pendingField = null;
+        } else {
+          // 标题独占一行，等下一行赋值
+          currentTopNews._pendingField = matchedField;
+        }
         continue;
       }
 
-      if (line.startsWith('**这意味着')) {
-        currentTopNews.insight = line.replace(/\*\*这意味着[：:]*\*\*[：:]*\s*/, '').trim();
-        continue;
-      }
-
-      if (line.startsWith('**受益方')) {
-        currentTopNews.beneficiary = line.replace(/\*\*受益方[：:]*\*\*[：:]*\s*/, '').trim();
-        continue;
-      }
-
-      if (line.startsWith('**承压方')) {
-        currentTopNews.pressure = line.replace(/\*\*承压方[：:]*\*\*[：:]*\s*/, '').trim();
-        continue;
-      }
-
-      if (line.startsWith('**后续观察')) {
-        currentTopNews.watch = line.replace(/\*\*后续观察[：:]*\*\*[：:]*\s*/, '').trim();
+      // 如果有 pendingField，将当前行内容赋给该字段
+      if (currentTopNews._pendingField) {
+        const pf = currentTopNews._pendingField;
+        const text = line.trim();
+        if (text && !text.startsWith('---')) {
+          if (pf.isSummary) {
+            currentTopNews.summary += (currentTopNews.summary ? '<br><br>' : '') + convertBold(text);
+          } else {
+            currentTopNews[pf.field] = text;
+          }
+        }
+        currentTopNews._pendingField = null;
         continue;
       }
 
@@ -132,6 +190,11 @@ function parseMarkdownSections(markdown) {
         tableRows = [];
         inTable = false;
         continue;
+      }
+
+      // 如果没有 ### 分类标题，使用默认分类名
+      if (!currentCategory && line.startsWith('|')) {
+        currentCategory = '速览';
       }
 
       if (line.startsWith('|') && line.includes('动态概要')) {
@@ -179,16 +242,14 @@ function generateWechatHTML(sections, linkWhitelist = null) {
 
   if (sections.judgment.thesis || sections.judgment.bullets.length > 0) {
     html += `<section style="margin: 0 0 12px 0; padding: 16px 18px; background-color: ${CARD_BG}; border-left: 3px solid ${THEME_COLOR};">`;
-    html += `<p style="margin: 0 0 8px 0; font-size: 13px; font-weight: bold; color: ${THEME_COLOR}; letter-spacing: 1px;">今日判断</p>`;
+    html += `<p style="margin: 0 0 8px 0; font-size: 15px; font-weight: bold; color: ${THEME_COLOR}; letter-spacing: 1px;">今日判断</p>`;
     if (sections.judgment.thesis) {
-      html += `<p style="margin: 0 0 10px 0; font-size: 16px; line-height: 1.75; color: ${TEXT_COLOR}; font-weight: 600; text-align: justify;">${sections.judgment.thesis}</p>`;
+      html += `<p style="margin: 0 0 10px 0; font-size: 17px; line-height: 1.75; color: ${TEXT_COLOR}; font-weight: 600; text-align: justify;">${sections.judgment.thesis}</p>`;
     }
     if (sections.judgment.bullets.length > 0) {
-      html += `<table border="0" cellpadding="0" cellspacing="0" width="100%">`;
       sections.judgment.bullets.slice(0, 3).forEach((bullet, idx) => {
-        html += `<tr><td width="24" valign="top" style="padding: 3px 8px 3px 0; color: ${THEME_COLOR}; font-size: 13px; font-weight: bold;">${idx + 1}</td><td valign="top" style="padding: 3px 0; font-size: 14px; line-height: 1.7; color: ${GRAY_TEXT}; text-align: justify;">${bullet}</td></tr>`;
+        html += `<p style="margin: 0 0 ${idx < Math.min(sections.judgment.bullets.length, 3) - 1 ? '10px' : '0'} 0; font-size: 16px; line-height: 1.8; color: ${TEXT_COLOR}; text-align: justify;"><strong style="color: ${THEME_COLOR};">${idx + 1}.</strong> ${bullet}</p>`;
       });
-      html += `</table>`;
     }
     html += `</section>`;
     // 今日判断块结束后留 2 行空行
@@ -196,7 +257,19 @@ function generateWechatHTML(sections, linkWhitelist = null) {
     html += `<p style="margin: 0; padding: 0; line-height: 1.6; font-size: 14px;">&nbsp;</p>`;
   }
 
-  html += `<p style="margin: 24px 0 16px 0; font-size: 18px; font-weight: bold; color: ${THEME_COLOR}; letter-spacing: 2px; border-left: 4px solid ${THEME_COLOR}; padding-left: 12px;">今日重点</p>`;
+  // 今天对谁有用
+  if (sections.audience.bullets.length > 0) {
+    html += `<section style="margin: 0 0 12px 0; padding: 14px 18px; background-color: ${CARD_BG}; border-left: 3px solid #6366F1;">`;
+    html += `<p style="margin: 0 0 8px 0; font-size: 15px; font-weight: bold; color: #6366F1; letter-spacing: 1px;">今天对谁有用</p>`;
+    sections.audience.bullets.forEach((bullet, idx) => {
+      html += `<p style="margin: 0 0 ${idx < sections.audience.bullets.length - 1 ? '6px' : '0'} 0; font-size: 15px; line-height: 1.7; color: ${GRAY_TEXT}; text-align: justify;">${idx + 1}. ${bullet}</p>`;
+    });
+    html += `</section>`;
+    html += `<p style="margin: 0; padding: 0; line-height: 1.6; font-size: 14px;">&nbsp;</p>`;
+    html += `<p style="margin: 0; padding: 0; line-height: 1.6; font-size: 14px;">&nbsp;</p>`;
+  }
+
+  html += `<p style="margin: 24px 0 16px 0; font-size: 18px; font-weight: bold; color: ${THEME_COLOR}; letter-spacing: 2px; border-left: 4px solid ${THEME_COLOR}; padding-left: 12px;">今日主线</p>`;
 
   sections.topNews.forEach((news, idx) => {
     const num = String(idx + 1).padStart(2, '0');
@@ -207,14 +280,19 @@ function generateWechatHTML(sections, linkWhitelist = null) {
     html += `<strong style="color: ${THEME_COLOR};">${num}.</strong> ${news.title}`;
     html += `</p>`;
 
-    if (news.link) {
+    if (news.link || news.links.length > 0) {
       html += `<p style="margin: 0 0 10px 0;">`;
-      if (isLinkValid(news.link)) {
-        html += `<a href="${news.link}" target="_blank" linktype="text" data-linktype="2" textvalue="" class="mp_article_text_link" style="font-size: 12px; color: ${THEME_COLOR}; text-decoration: none;">原文链接 →</a>`;
-      } else {
-        // 链接不在白名单（可能是AI幻觉或已失效）→ 转成纯文字，避免触发"不合法链接"错误
-        html += `<span style="font-size: 12px; color: #94A3B8;">原文链接（无可用源）</span>`;
-      }
+      const linksToRender = news.links.length > 0 ? news.links : (news.link ? [news.link] : []);
+      linksToRender.forEach((lnk, li) => {
+        if (isLinkValid(lnk)) {
+          html += `<a href="${lnk}" target="_blank" linktype="text" data-linktype="2" textvalue="" class="mp_article_text_link" style="font-size: 12px; color: ${THEME_COLOR}; text-decoration: none;">原文链接${linksToRender.length > 1 ? (li + 1) : ''} →</a>`;
+        } else {
+          html += `<span style="font-size: 12px; color: #94A3B8;">原文链接${linksToRender.length > 1 ? (li + 1) : ''}（无可用源）</span>`;
+        }
+        if (li < linksToRender.length - 1) {
+          html += `<span style="font-size: 12px; color: #CBD5E1; margin: 0 4px;">|</span>`;
+        }
+      });
       html += `</p>`;
     }
 
@@ -237,7 +315,7 @@ function generateWechatHTML(sections, linkWhitelist = null) {
 
       if (news.beneficiary) {
         html += `<p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.6; color: ${GRAY_TEXT};">`;
-        html += `<strong style="color: ${THEME_COLOR}; font-size: 12px;">受益方：</strong>${news.beneficiary}`;
+        html += `<strong style="color: ${THEME_COLOR}; font-size: 12px;">谁该关注：</strong>${news.beneficiary}`;
         html += `</p>`;
       }
 
@@ -249,7 +327,7 @@ function generateWechatHTML(sections, linkWhitelist = null) {
 
       if (news.watch) {
         html += `<p style="margin: 0; font-size: 13px; line-height: 1.6; color: ${GRAY_TEXT};">`;
-        html += `<strong style="color: ${THEME_COLOR}; font-size: 12px;">后续观察：</strong>${news.watch}`;
+        html += `<strong style="color: ${THEME_COLOR}; font-size: 12px;">下一步看什么：</strong>${news.watch}`;
         html += `</p>`;
       }
 
